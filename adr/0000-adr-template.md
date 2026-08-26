@@ -2,7 +2,7 @@
 
 ## Status
 
-`Proposed` · `Accepted` · `Superseded by [ADR NNNN](...)` 중 하나.
+`Proposed` · `Accepted` · `Superseded by [ADR NNNN](NNNN-슬러그.md)` 중 하나.
 대체 관계가 있으면 무엇이 대체됐고 무엇이 유효한지 한 줄로 함께 적는다.
 
 ## Context
