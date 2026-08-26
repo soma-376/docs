@@ -37,6 +37,10 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 - Dashboard API 서버의 소재 — `pulsemetry-backend` 모듈인가 별도 레포인가 ([`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2)
 - 계약 응답 스키마의 버저닝 정책 — tolerant reader로 갈 것인가 ([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §6 M7)
 - Provider 공시 단가표의 소유·갱신 주체와 저장 위치 ([`../product/prd.md`](../product/prd.md) §8-5)
+- **텔레메트리 파이프라인의 소유 레포** — backend ADR-0006(`Proposed`)이 `ai-telemetry-pipeline`을
+  `pulsemetry-backend`로 병합하는 것을 제안한다. 두 레포의 코드·계약에 걸리므로 스코프 규칙상 허브 결정이다.
+  현재 단일 레포 ADR로 있는 것은 이 규칙이 생기기 전이기 때문이며, 재배치 여부는 팀이 정한다
+  ([`../architecture/repos.md`](../architecture/repos.md))
 
 ---
 

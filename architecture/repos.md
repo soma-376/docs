@@ -70,7 +70,11 @@ libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이�
 - **소유**: `POST /v1/enroll`, `POST /v1/installations/telemetry-token`, `POST /v1/invitations`,
   부트스트랩 스크립트·바이너리 서빙(`GET /windows|/unix|/bin/{f}`), **manifest 저장**,
   그리고 **enrollment 스키마의 진실원(Flyway)**.
-- **소유하지 않음**: 대시보드 API, 사람 로그인, 파이프라인. manifest 작성 API도 아직 없다(수동 INSERT).
+- **아직 없지만 이 레포의 몫**: 사람 계정·로그인(이 레포가 Auth Service다), manifest 작성 API(현재 수동 INSERT).
+  구현이 없는 것이지 소유가 없는 것이 아니다.
+- **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2),
+  그리고 **텔레메트리 파이프라인 + ClickHouse 스키마**(backend ADR-0006 `Proposed`가 이 레포로의 병합을 제안 중. 아래 `ai-telemetry-pipeline` 항목 참조).
+- **소유하지 않음**: AWS 리소스·배포 설정(`infra`), 로컬 수신기·데몬·manifest 계약 스키마 파일(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
 - 모듈 경계·네임스페이스 규칙은 ADR-0008, 인증 계층은 ADR-0007.
 - 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 여전히 Flyway다.
 - 계약: [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) · 서버 측 상세 명세는 레포의 `docs/enrollment-server-spec.md`.
@@ -123,6 +127,11 @@ sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 
   **배포 collector 설정**(infra).
 - `sql/rds/schema.sql`은 dev 편의용 부트스트랩이다. 스키마를 바꿔야 하면 backend Flyway를 고친다.
 - 계약: [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)
+- ⚠️ **이 레포의 존속이 확정 상태가 아니다.** backend ADR-0006(`Proposed`)이 파이프라인을 Kotlin/Spring으로
+  재작성해 `pulsemetry-backend`로 병합하고 ClickHouse 스키마 소유권도 가져가는 것을 제안한다.
+  **채택 전까지 소유는 이 레포에 있다.** 채택되면 이 절과 backend 절, `contracts/telemetry-ingest.md`의
+  소유권 서술을 함께 고친다. 이 결정은 두 레포에 걸리므로 스코프 규칙상 허브 ADR이 맞다 —
+  [`../adr/README.md`](../adr/README.md)의 크로스레포 후보 참조.
 - 알려진 상태: 레포 테스트 0개(CI는 auth-proxy typecheck/build만). README·`docs/`는 PROJ-52 이전 `src/` 구조 기준으로 스테일이다.
 
 ## infra
