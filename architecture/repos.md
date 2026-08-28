@@ -38,7 +38,8 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 
 `docs`·`agent-skills`·`rdb-schema`·`team-376-llm-wiki`·`.github`는 `main` 단일 브랜치다.
 코드 레포 4종(`pulsemetry-backend`·`telemetryctl`·`ai-telemetry-pipeline`·`infra`)만 협업 컨벤션 v2의
-develop/squash 플로우를 따른다.
+develop/squash 플로우를 따른다. `docs`는 develop 없이 티켓 브랜치에서 `main`으로 직접 PR을 열고,
+`.github/workflows/`의 PR 자동화가 main 대상 PR에 적용된다.
 
 ---
 
