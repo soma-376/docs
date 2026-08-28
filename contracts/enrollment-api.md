@@ -114,7 +114,7 @@ WHERE code_hash = :codeHash AND used_at IS NULL AND revoked_at IS NULL AND expir
 토큰과 초대 코드의 원본은 DB에 저장하지 않고 **로그·에러 응답에도 담지 않는다** —
 파싱 실패 메시지에는 요청 본문 조각이 섞여 있어 그대로 흘리면 코드가 새어 나간다.
 
-### 초대 코드 pepper — 해소됨(PROJ-80)
+### 초대 코드 pepper — 해소됨(PROJ-79)
 
 `ai-telemetry-pipeline`의 `sql/rds/seed.sql`이 `HMAC-SHA256('dev-only-invite-pepper', code)`를 전제해
 backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이고 진실원은 backend다** — 시드를 backend
@@ -163,7 +163,7 @@ backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이�
 
 | # | 항목 | 영향 |
 |---|---|---|
-| M1 | **좁혀짐(PROJ-80)** — backend `LocalSeeder`의 endpoint가 설정값(`pulsemetry.local-seed.otlp-endpoint`, 기본 `:4316` 정상 경로)으로 분리돼(backend `0255b54`) 두 시드가 정렬됐다. 남은 것은 로컬 compose가 두 시드에 **한 값을 주입**하는 배선(파이프라인 `seed.sql`의 주입형 전환 포함)이다 | (기존 위험이던 `:4318` 하드코딩 — auth-proxy 우회·자기참조 — 은 제거됨) |
+| M1 | **좁혀짐(PROJ-79)** — backend `LocalSeeder`의 endpoint가 설정값(`pulsemetry.local-seed.otlp-endpoint`, 기본 `:4316` 정상 경로)으로 분리돼(backend `0255b54`) 두 시드가 정렬됐다. 남은 것은 로컬 compose가 두 시드에 **한 값을 주입**하는 배선(파이프라인 `seed.sql`의 주입형 전환 포함)이다 | (기존 위험이던 `:4318` 하드코딩 — auth-proxy 우회·자기참조 — 은 제거됨) |
 | M7 | **계약 진화 취약** — 클라이언트 `DisallowUnknownFields` + 서버 `FAIL_ON_UNKNOWN_PROPERTIES`. 응답 필드 하나만 추가해도 배포된 전 클라이언트가 파괴된다 | 버저닝 또는 tolerant reader 정책이 필요하다. **현재는 필드 추가가 breaking change다** |
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
@@ -171,4 +171,4 @@ backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이�
 | — | `/v1/enroll`에 rate limit이 없다 | 60비트 초대 코드의 유일한 브루트포스 표면이 무방비 |
 | — | `POST /v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
-| — | **해소됨(PROJ-80)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과) | — |
+| — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과) | — |

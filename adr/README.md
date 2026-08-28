@@ -69,7 +69,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 ### 인덱스가 없는 레포에 ADR을 추가할 때
 
 인덱스가 없는 레포는 `ai-telemetry-pipeline` 하나다
-(`pulsemetry-backend`·`telemetryctl`은 PROJ-80에서 infra 형식의 인덱스를 만들었다).
+(`pulsemetry-backend`·`telemetryctl`은 PROJ-79에서 infra 형식의 인덱스를 만들었다).
 그 레포에 ADR을 추가할 때 인덱스를 새로 만들지는 **사용자에게 물어본다** — infra 형식을 따르면 된다.
 
 ### ADR을 각 레포에 분산해 두는 이유
