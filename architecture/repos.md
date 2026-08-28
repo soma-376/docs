@@ -29,7 +29,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 | [`agent-skills`](#agent-skills) | Markdown + bash | 공용 에이전트 스킬 4종 | `main` | — |
 | [`pulsemetry-backend`](#pulsemetry-backend) | Kotlin / Spring Boot / Gradle | enrollment API, **enrollment 스키마의 진실원(Flyway)** | `develop` | 9건 |
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
-| [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 없음 |
+| [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
 | [`infra`](#infra) | AWS CDK v2 (TS) | **모든 AWS 리소스**, collector 배포 설정 | `develop` | 23건 |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
@@ -72,8 +72,10 @@ libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이�
   그리고 **enrollment 스키마의 진실원(Flyway)**.
 - **아직 없지만 이 레포의 몫**: 사람 계정·로그인(이 레포가 Auth Service다), manifest 작성 API(현재 수동 INSERT).
   구현이 없는 것이지 소유가 없는 것이 아니다.
-- **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2),
-  그리고 **텔레메트리 파이프라인 + ClickHouse 스키마**(backend ADR-0006 `Proposed`가 이 레포로의 병합을 제안 중. 아래 `ai-telemetry-pipeline` 항목 참조).
+- **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2).
+- **파이프라인 병합(ADR-0006)은 기각으로 닫혔다** — 레포 2개 체제 유지([허브 ADR 0003](../adr/0003-telemetry-pipeline-repo-boundary.md)).
+  **collector만 이 레포로 이관 예정**이며(ADR-0007, 도착지 `:apps:telemetry-ingest`) 그때 collector config
+  소유권이 함께 이동한다. ClickHouse 스키마는 `ai-telemetry-pipeline` 소유로 남는다.
 - **소유하지 않음**: AWS 리소스·배포 설정(`infra`), 로컬 수신기·데몬·manifest 계약 스키마 파일(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
 - 모듈 경계·네임스페이스 규칙은 ADR-0008, 인증 계층은 ADR-0007.
 - 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 여전히 Flyway다.
@@ -127,12 +129,13 @@ sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 
   **배포 collector 설정**(infra).
 - `sql/rds/schema.sql`은 dev 편의용 부트스트랩이다. 스키마를 바꿔야 하면 backend Flyway를 고친다.
 - 계약: [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)
-- ⚠️ **이 레포의 존속이 확정 상태가 아니다.** backend ADR-0006(`Proposed`)이 파이프라인을 Kotlin/Spring으로
-  재작성해 `pulsemetry-backend`로 병합하고 ClickHouse 스키마 소유권도 가져가는 것을 제안한다.
-  **채택 전까지 소유는 이 레포에 있다.** 채택되면 이 절과 backend 절, `contracts/telemetry-ingest.md`의
-  소유권 서술을 함께 고친다. 이 결정은 두 레포에 걸리므로 스코프 규칙상 허브 ADR이 맞다 —
-  [`../adr/README.md`](../adr/README.md)의 크로스레포 후보 참조.
-- 알려진 상태: 레포 테스트 0개(CI는 auth-proxy typecheck/build만). README·`docs/`는 PROJ-52 이전 `src/` 구조 기준으로 스테일이다.
+- **레포 경계는 확정됐다** — backend로의 전체 병합(backend ADR-0006)은 **기각**, 레포 2개 체제와 Python
+  구현이 유지된다([허브 ADR 0003](../adr/0003-telemetry-pipeline-repo-boundary.md)). 단 **collector는 backend로
+  이관 예정**(backend ADR-0007)이며 그때 collector config 소유권이 함께 이동한다. auth-proxy는 그 이관과
+  함께 폐기 예정이다([허브 ADR 0001](../adr/0001-otlp-authentication-model.md)).
+- 알려진 상태: 레포 테스트 0개(CI는 auth-proxy typecheck/build만).
+  README·`docs/`의 코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.
+  다만 `docs/normalizer.md`·`docs/diagnostics.md`의 **필드 단위 정의는 아직 코드와 대조하지 않았다.**
 
 ## infra
 
