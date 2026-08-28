@@ -26,8 +26,9 @@ backend ADR-0007의 Context는 부서 단위 manifest 배정(인사이동 시나
 
 - **부서 단위 배정** — `manifests`에 `team_id`를 추가하거나 `installation_manifest_assignments`를
   배정 진실원으로 승격해야 하고, `ux_manifests_tenant_active` 대체 마이그레이션 + 허브 계약 §5 +
-  manifest 스키마가 한 묶음으로 바뀐다. 현재 `teams`·`team_memberships`는 DDL만 있고 쓰는 코드·관리자
-  API가 없어 집행할 수단 자체가 없다. 택하지 않았다.
+  manifest 스키마가 한 묶음으로 바뀐다. 현재 `teams`·`team_memberships`에는 manifest 배정을 위한
+  **쓰기(write)** 코드·관리자 API가 없어 부서 단위 배정을 집행할 수단이 없다(읽기 소비자인 파이프라인
+  org provider의 as-of 조인은 별개 — [`../contracts/data-model.md`](../contracts/data-model.md) D-3). 택하지 않았다.
 
 ## Consequences/Tradeoffs
 

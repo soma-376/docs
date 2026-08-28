@@ -155,7 +155,7 @@ config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
   **태스크 정의를 바꾸려면 반드시 이 레포를 경유한다.**
 - 폴더 의존 방향은 `prod → common`, `dev → common`, `cicd → common` **단방향**. `prod ↔ dev` 상호 참조 금지.
 - region은 `ap-northeast-2`. account는 `CDK_DEFAULT_ACCOUNT`에서만 주입하고 코드·문서에 기록하지 않는다.
-- **`AGENTS.md`(719줄)가 이 레포의 실질 핸드오프 문서다.** 3장(불변 규칙)과 5장(남은 작업)을 먼저 읽는다.
+- **`AGENTS.md`가 이 레포의 실질 핸드오프 문서다.** 3장(불변 규칙)과 5장(남은 작업)을 먼저 읽는다.
 - ADR 번호 `0020`은 로그 그룹 정책용으로 **예약**돼 있다. 새 ADR은 `0025`부터.
 
 ## rdb-schema

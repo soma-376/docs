@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted — backend ADR-0006(파이프라인 전체 병합, `Rejected`)을 이 허브 결정으로 대체한다.
+Accepted — backend ADR-0006(파이프라인 전체 병합)을 이 허브 결정으로 대체한다.
+backend 0006은 `Superseded by`로 닫는다(제안 자체는 기각).
 
 ## Context
 
@@ -59,5 +60,5 @@ infra는 레포 2개 전제의 결정들을 확정하지 못한다.
 
 ## References
 
-- backend ADR-0006(`Rejected`, 본문은 이 ADR로 이관) · ADR-0007 · ADR-0009
+- backend ADR-0006(`Superseded by` 이 ADR — 제안 기각, 본문 이관) · ADR-0007 · ADR-0009
 - infra ADR-0009 · [`../architecture/repos.md`](../architecture/repos.md)

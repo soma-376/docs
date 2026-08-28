@@ -84,8 +84,10 @@ WHERE code_hash = :codeHash AND used_at IS NULL AND revoked_at IS NULL AND expir
 
 형식은 둘 다 `접두사 + base64url(32 랜덤 바이트, 패딩 없음)`.
 
-**`ptt_`는 벤더 설정 파일로 나가지 않는다.** enroll이 로컬 파이프라인을 배선하면서 Codex/Claude 설정에는
+**`ptt_`는 벤더 설정 파일로 나가지 않는다(로컬 파이프라인 배선 시).** enroll이 로컬 파이프라인을 배선하면서 Codex/Claude 설정에는
 **로컬 ingest 토큰**이 들어가고, 회사 `ptt_`는 OS 키링에 있다가 데몬이 상위 전송 시 헤더에 주입한다.
+단 배선이 강등된(회사 직결 — grpc 테넌트·키링 불가 등, [`telemetry-ingest.md`](telemetry-ingest.md) §6) 설치에서는
+벤더 설정의 `Authorization`에 `ptt_`가 실린다.
 
 **봉투 분리** — `installation_id`와 두 토큰은 manifest **밖**, 응답 봉투 상위에 둔다. 이유는 둘이다.
 ① 설정 재조회 API가 생겼을 때 매번 secret을 실어 나르지 않기 위해.
@@ -102,8 +104,9 @@ WHERE code_hash = :codeHash AND used_at IS NULL AND revoked_at IS NULL AND expir
 `telemetry_token`만 HMAC인 이유는 **auth-proxy가 같은 키·같은 연산으로 `token_hash`를 조회하기 때문**이다.
 `ai-telemetry-pipeline`의 `apps/auth-proxy/src/shared/crypto/token-hash.ts`는
 `createHmac("sha256", TOKEN_HASH_SECRET).update(token, "utf8").digest("hex")`를 쓴다.
-**양쪽이 같은 시크릿을 받아야 한다** — 운영에서는 `infra`의 `DevEdgeStack` CfnOutput `TokenHashSecretArn`
+**양쪽이 같은 시크릿을 받아야 한다** — dev 인프라에서는 `infra`의 `DevEdgeStack` CfnOutput `TokenHashSecretArn`
 (Secrets Manager)이 원본이고, backend는 `PULSEMETRY_TOKEN_HASH_SECRET`, auth-proxy는 `TOKEN_HASH_SECRET`으로 받는다.
+prod의 공유 방식은 enrollment 서버 배치와 함께 미결이다(infra `AGENTS.md` 5장 (H)).
 
 > **이 세 값이 갈라지면 발급된 모든 토큰이 401이 된다.** 한쪽만 고치는 PR을 열지 않는다.
 
@@ -171,4 +174,4 @@ backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이�
 | — | `/v1/enroll`에 rate limit이 없다 | 60비트 초대 코드의 유일한 브루트포스 표면이 무방비 |
 | — | `POST /v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
-| — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과) | — |
+| — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과). **기존 저장 manifest 주의** — `required` 추가라 이 필드가 없는 기존 v1 manifest는 서버 검증에서 409 `manifest_not_configured`가 된다. 테넌트 온보딩 전 수동 INSERT 점검이 필요하다 | — |

@@ -42,7 +42,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 **후보에서 결정으로 옮겨간 것:**
 
 - 텔레메트리 파이프라인의 소유 레포 → [ADR 0003](0003-telemetry-pipeline-repo-boundary.md)
-  (전체 병합 기각 — backend ADR-0006은 `Rejected`로 닫혔다)
+  (전체 병합 기각 — backend ADR-0006은 `Superseded by 허브 ADR 0003`으로 닫혔다)
 - OTLP 인증 모델 → [ADR 0001](0001-otlp-authentication-model.md)
 - manifest 배정 단위 → [ADR 0002](0002-manifest-assignment-unit-is-tenant.md)
 - enrollment 스키마의 부트스트랩 주체 → 결정 완료(backend Flyway — backend ADR-0009,
