@@ -85,5 +85,5 @@ tenants ──┬── teams ──── team_memberships ──── members
 | # | 항목 |
 |---|---|
 | B3 | dev ECS에 enrollment 서버가 미배포이고, 로컬에서 backend와 파이프라인이 서로 다른 Postgres를 본다. 공유 RDS `controlplane`을 양쪽이 보는 구성으로 수렴시켜야 한다 — [`telemetry-ingest.md`](telemetry-ingest.md) §5 |
-| — | `enrollment` 스키마를 공유 RDS에 **부트스트랩하는 주체가 정해지지 않았다**(infra `AGENTS.md` 5장 (H), infra ADR-0023 Follow-up). 현재 dev는 파이프라인 DDL을 psql로 수동 삽입하는 우회를 안내한다 |
+| — | **부트스트랩 주체는 backend Flyway로 확정됐다**(backend ADR-0009). enrollment 서버가 dev에 배포되기 전까지는 backend 명세 §9.4의 로컬 `bootRun` 레시피가 **공식 잠정 절차**다 — 파이프라인 DDL을 psql로 직접 넣는 우회는 폐지됐다. 남은 것은 enrollment 서버의 dev 배포와 ECS에서 마이그레이션을 실행할 자리(infra 새 ADR 예정)다 |
 | — | Signal Database(ClickHouse) 쪽 스키마는 이 계약의 범위 밖이다. `enriched_events`의 컬럼 계약은 [`telemetry-ingest.md`](telemetry-ingest.md)가 다룬다 |
