@@ -8,6 +8,7 @@
 | 용어 | 뜻 | 주의 |
 |---|---|---|
 | **tenant** | 조직. 모든 데이터의 테넌트 경계 | 코드·DB에서는 `tenant`, 제품 화면에서는 "조직" |
+| **회사** | tenant(조직)의 통칭 — 특히 telemetryctl 문서의 "회사 manifest"·"회사 Collector" | tenant와 같은 뜻이다 |
 | **team** | 팀. **약속하는 최소 집계 단위** | 프로젝트 축은 Non-goal |
 | **member** | 조직 구성원 | 사람이다. `installation`과 다르다 |
 | **installation** | 사용자 PC에 설치된 인스턴스. 데스크탑의 **인증 주체** | 사람 계정이 아니다. 한 member가 여러 installation을 가질 수 있다 |
@@ -32,6 +33,7 @@
 | **Masker** | 서버 측 2차 마스킹. 조직별 규칙 적용 | 데몬의 1차 집행과 짝. 현재 구현은 collector의 전역 `redaction`뿐 |
 | **Adapter** | 벤더별 OTel 형식 → 내부 공통 스키마 변환 + **공시 단가 기준 금액** 환산 | |
 | **Enricher** | 조직·팀·사용자 결합 + 시간 집계 후 적재 | **Signal DB에 쓰는 유일한 주체** (I-4) |
+| **post-processor** | `ai-telemetry-pipeline`의 `telemetry-processor` 앱을 부르는 컨테이너·ECR 이름 | 같은 앱이다 — infra 문서는 post-processor, 파이프라인 레포는 telemetry-processor |
 | **재처리** | Object Storage → Adapter부터 다시 태우는 운영 개입 경로 | Masker를 다시 태우지 않는다 (I-9). 멱등해야 한다 (I-10) |
 
 ## 비용 — ★ 섞으면 안 되는 두 값
