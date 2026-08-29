@@ -146,6 +146,8 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - AI tool → Desktop은 **push**다. 벤더의 OTel exporter가 데몬의 loopback 수신기로 보낸다. 로그 파일 감시가 아니다.
 - 데몬은 배치를 두 갈래로 나눈다: ① 원본 바이트 → 상위 전달(프라이버시 1차 집행) ② 정규화 결과 → Local Store(개인용).
 - 파이프라인은 단방향 4단계다. 정상 흐름에 되돌아오는 경로가 없다.
+- **단계 간 전달은 한 배포 단위 안의 in-process 호출이다**([`../adr/0004-telemetry-pipeline-repo-merge.md`](../adr/0004-telemetry-pipeline-repo-merge.md)).
+  단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 큐나 스트림을 두지 않는다. Collector만 별도 컨테이너다.
 - **Masker에서 경로가 갈라진다** — ① 마스킹 완료 시그널 보존(Object Storage) ② 가공 계속(Adapter).
   이 분기가 raw-first 원칙을 구조로 구현한 지점이다. 다만 여기서 "raw"는 마스킹 전 원본이 아니라 **가공 전** 시그널이다.
 - Adapter 이후 변환이 실패하면 그 시그널은 Object Storage에만 남는다. 이것이 흐름 D의 복구 원천이며, 별도 DLQ에 의존하지 않는다.
@@ -296,7 +298,6 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 | # | 질문 | 막히는 작업 | 상태 |
 |---|---|---|---|
 | Q5 | Adapter의 변환 대상 스키마와 Enricher 보강 항목의 세부 필드 | 파이프라인 전체 | 부분 확정 — 구조는 *공통 스키마 + provider별 확장*으로 확정. 필드 미정 |
-| Q6 | 파이프라인 단계 간 전달 방식: 동기 호출인가 큐/스트림인가 | 배포 구조 | 실패분 복구는 Object Storage가 원천이므로 큐 DLQ에 의존하지 않는다. 처리량·백프레셔 관점만 남음 |
 | Q8 | 수집 트래픽과 대시보드 트래픽의 부하 분리 | Gateway 구성 | 부분 확정 — 같은 Gateway를 공유하고 경로로 분기. 뒷단 분리는 미정 |
 | Q10 | Self-hosted 배포 시 구성 차이 + 관측성 대체 경로 | 배포 아키텍처 | 미정 |
 | Q11 | 각 컴포넌트의 기술 스택·런타임 | 전체 | 부분 확정 — Signal DB = ClickHouse, User DB = PostgreSQL, 경계 = ALB, 관측성 = CloudWatch · Sentry |

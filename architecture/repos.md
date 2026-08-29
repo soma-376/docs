@@ -74,11 +74,14 @@ libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이�
 - **아직 없지만 이 레포의 몫**: 사람 계정·로그인(이 레포가 Auth Service다), manifest 작성 API(현재 수동 INSERT).
   구현이 없는 것이지 소유가 없는 것이 아니다.
 - **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2).
-- **파이프라인 병합(ADR-0006)은 기각으로 닫혔다** — 레포 2개 체제 유지([허브 ADR 0003](../adr/0003-telemetry-pipeline-repo-boundary.md)).
-  **collector만 이 레포로 이관 예정**이며(ADR-0007, 도착지 `:apps:telemetry-ingest`) 그때 collector config
-  소유권이 함께 이동한다. ClickHouse 스키마는 `ai-telemetry-pipeline` 소유로 남는다.
+- **파이프라인 병합이 채택됐다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
+  파이프라인 로직 전체가 이 레포로 오며, 도착지는 앱 하나(`:apps:telemetry-ingest`)와 그 앞뒤에 붙는
+  `:libs:` 단계 모듈들이다. collector config와 **ClickHouse 스키마 소유권**도 함께 이동한다.
+  auth-proxy는 폐기되고 OTLP 인증은 이 레포의 Spring Security가 맡는다(ADR-0007,
+  [허브 ADR 0001](../adr/0001-otlp-authentication-model.md)). 모듈 목록은 레포의 `docs/module-map.md`가 소유한다.
+  **이관은 아직 진행 전이다** — 현재 동작하는 파이프라인은 `ai-telemetry-pipeline`에 있다.
 - **소유하지 않음**: AWS 리소스·배포 설정(`infra`), 로컬 수신기·데몬·manifest 계약 스키마 파일(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
-- 모듈 경계·네임스페이스 규칙은 ADR-0008, 인증 계층은 ADR-0007.
+- 모듈 경계·네임스페이스 규칙은 ADR-0008과 레포의 `docs/module-map.md`, 인증 계층은 ADR-0007.
 - 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 여전히 Flyway다.
 - 계약: [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) · 서버 측 상세 명세는 레포의 `docs/enrollment-server-spec.md`.
 
@@ -130,11 +133,12 @@ sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 
   **배포 collector 설정**(infra).
 - `sql/rds/schema.sql`은 dev 편의용 부트스트랩이다. 스키마를 바꿔야 하면 backend Flyway를 고친다.
 - 계약: [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)
-- **레포 경계는 확정됐다** — backend로의 전체 병합(backend ADR-0006)은 **기각**, 레포 2개 체제와 Python
-  구현이 유지된다([허브 ADR 0003](../adr/0003-telemetry-pipeline-repo-boundary.md)). 단 **collector는 backend로
-  이관 예정**(backend ADR-0007)이며 그때 collector config 소유권이 함께 이동한다. auth-proxy는 그 이관과
-  함께 폐기 예정이다([허브 ADR 0001](../adr/0001-otlp-authentication-model.md)).
+- **이 레포는 backend로 병합된다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
+  파이프라인 로직 전체가 Kotlin으로 재작성돼 `pulsemetry-backend`로 옮겨가고, auth-proxy는 폐기되며
+  ClickHouse 스키마 소유권도 함께 이동한다. **이관이 끝나면 이 레포는 아카이브된다.**
+  그전까지 위의 소유 서술은 그대로 사실이며, 동작하는 파이프라인은 여기에 있다.
 - 알려진 상태: 레포 테스트 0개(CI는 auth-proxy typecheck/build만).
+  이 공백을 메우는 특성화 테스트 확보가 이식 착수의 선행 조건이다(허브 ADR 0004 Follow-up).
   README·`docs/`의 코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.
   다만 `docs/normalizer.md`·`docs/diagnostics.md`의 **필드 단위 정의는 아직 코드와 대조하지 않았다.**
 
