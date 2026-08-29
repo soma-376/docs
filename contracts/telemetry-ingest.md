@@ -3,8 +3,8 @@
 | 항목 | 내용 |
 |---|---|
 | 당사자 | **`telemetryctl`** (데몬 forwarder) → **`ai-telemetry-pipeline`** (auth-proxy · collector · processor), 배포 설정은 **`infra`** |
-| 관련 ADR | infra ADR-0008(인증 이원화), ADR-0017(collector config 주입), ADR-0023(dev auth-proxy) / telemetryctl ADR-0001(인라인 프록시 토폴로지) |
-| 상태 | 확정 — **미해결 배선 2건**(§5) |
+| 관련 ADR | **허브 [ADR-0001](../adr/0001-otlp-authentication-model.md)(OTLP 인증 모델 — infra ADR-0008을 대체)** / infra ADR-0017(collector config 주입), ADR-0023(dev auth-proxy) / telemetryctl ADR-0001(인라인 프록시 토폴로지) |
+| 상태 | 확정 — **미해결 배선 1건**(§5 B3) |
 
 데스크탑/CLI에서 발생한 OTLP 신호가 회사 파이프라인에 들어가 **누구 것인지 알 수 있는 상태로** 적재되기까지의 계약이다.
 
@@ -26,7 +26,8 @@ Claude Code / Codex ── OTLP/HTTP + Bearer <로컬 ingest 토큰> + X-Pulseme
 ```
 
 dev ECS 배포 경로는 ALB `:80 /v1/*` → auth-proxy → `collector.obs.local:4318` → 같은 태스크의 processor(`localhost:8080`).
-**구조는 동일하되 collector 설정 파일이 다르다** — 이것이 §5 B4의 원인이다.
+dev/배포 collector 설정은 각각 유지하되 **신원 전파 3요소는 PROJ-77로 동일해졌다**(§5 B4 해소).
+나머지 차이(gRPC 리시버·`create_directory`·exporter endpoint)는 환경 차이다.
 
 ## 2. 로컬 수신기 (AI tool → 데몬)
 
@@ -36,6 +37,11 @@ dev ECS 배포 경로는 ALB `:80 /v1/*` → auth-proxy → `collector.obs.local
 - 여기 실리는 토큰은 **로컬 ingest 토큰**이며 회사 `ptt_`가 아니다([`enrollment-api.md`](enrollment-api.md) §3).
 
 ## 3. 상위 전송 인증 (forwarder → auth-proxy) — ★ 핵심 계약
+
+**OTLP `Authorization`에 실리는 값은 `ptt_`다** — 토큰 종류는 확정이다([ADR-0001](../adr/0001-otlp-authentication-model.md)).
+검증 **주체**는 별개 축이다: 현행은 auth-proxy(`ai-telemetry-pipeline`)지만 **폐기 예정**이며,
+backend ADR-0007의 collector 이관과 함께 backend Spring Security 계층으로 이관된다.
+manifest revision 대조는 이 경로에 없다 — 불투명 토큰에는 클레임이 없고, 대조는 관리자 API 경로의 몫이다.
 
 **forwarder가 싣는 것은 `Authorization: Bearer <ptt_>` 하나뿐이다.**
 디바이스·사용자 식별 헤더도, 신원 리소스 속성도 보내지 않는다.
@@ -79,6 +85,12 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 셋 중 하나만 빠져도 **헤더가 collector에서 소실되고 스탬핑이 no-op이 된다.**
 그러면 인증은 통과했는데 ClickHouse의 `tenant_id`·`installation_id`가 빈 문자열이 되고 `team_ids_as_of`는 빈 배열이 된다.
 
+> **규칙 — 두 collector 설정 파일의 신원 전파 3요소는 함께 바꾼다.**
+> `infra/config/otel-collector.yaml`(ECS 기동)과 `ai-telemetry-pipeline/otel-collector-config.yaml`(dev in-repo)은
+> 의도된 두 벌 구성이며, `include_metadata` · `headers_setter/pulsemetry_tenant` · `batch.metadata_keys` 셋은
+> 반드시 같은 값이어야 한다. 한쪽만 고쳐 실제로 갈라진 이력이 B4다(PROJ-77로 복구).
+> 자동 검증 장치는 두지 않는다 — 다시 갈라진 사실이 발견되면 그때 감지 장치를 재검토한다.
+
 **processor의 스탬핑 규칙**
 
 | 리소스 속성 | 출처 헤더 |
@@ -93,16 +105,18 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 | # | 결함 | 근거 | 수정 방향 |
 |---|---|---|---|
 | **B3** | **enrollment DB 배선 단절.** 로컬에서 backend는 자기 Postgres(`pulsemetry`@5432)에, auth-proxy는 파이프라인 Postgres(`enrichment`@55432)에 붙는다. **같은 DB를 보는 구성이 어디에도 없다.** dev ECS에는 enrollment 서버가 아예 미배포다 | backend `docker-compose.yml` vs pipeline `docker-compose.dev.yml`; infra ADR-0023 Follow-up | 공유 RDS `controlplane`을 양쪽이 보게 한다. **DDL 진실원은 backend Flyway**(ADR-0004·0009). 파이프라인 `sql/rds/schema.sql`은 dev 편의용 소비자로 격하. dev ECS에 enrollment 서버 배포(ECR·태스크 정의부터 부재) |
-| **B4** | **배포 collector 설정에 §4의 3요소가 없다.** `infra/config/otel-collector.yaml`(ECS가 `--config=env:OTEL_CONFIG`로 실제 기동하는 파일)에 `include_metadata`·`headers_setter`·`batch.metadata_keys`가 전부 빠져 있다. dev in-repo 설정에는 있다 | `infra/config/otel-collector.yaml` vs `ai-telemetry-pipeline/otel-collector-config.yaml:8,11-24,30-34` | infra 설정에 3요소를 이식한다. **두 파일의 드리프트가 원인이므로 한쪽만 고치면 재발한다** |
+| ~~B4~~ | **해소됨(PROJ-77).** `infra/config/otel-collector.yaml`에 신원 전파 3요소가 모두 반영됐다(`04cd98e`). 두 파일의 드리프트가 재발 원인이므로 collector 설정 변경 시 두 파일을 함께 본다(§4의 규칙) | `infra/config/otel-collector.yaml` | — |
 | M2 | **processor가 `x-pulsemetry-member-id`를 받고도 버린다.** 스탬핑 대상이 tenant/installation뿐이다. `Identity.member_id`는 클라이언트 자칭 `developer.email`/`developer.id` 폴백인데, **이 속성을 발신하는 코드가 세 레포 어디에도 없다** | `otlp_receiver.py:48-51` | member 귀속을 인증 헤더 기반으로 바꾼다. 현재 실트래픽에서 `member_id`는 항상 `None` |
-| M3 | `developer.*`·`tenant.id` 리소스 속성 발신자 부재. telemetryctl이 `OTEL_RESOURCE_ATTRIBUTES`를 배선하지 않고, manifest `resource_attributes`는 Codex `environment` 한 키에만 쓰인다. `repository_allowlist`는 완전히 사장 | `config/claude.go`, `codex.go:51-54` | M2와 함께 결정한다 — 신원을 토큰 파생으로 통일하면 발신자는 필요 없다 |
-| M4 | **Postgres 장애가 400(영구 오류)으로 분류돼 collector가 배치를 폐기한다.** enrichment 실패가 곧 데이터 유실이 된다 | `providers/org.py:56` → `otlp_receiver.py:139` | 일시 오류를 5xx로 분류해 재시도시킨다 |
+| M3 | `developer.*`·`tenant.id` 리소스 속성 발신자 부재. telemetryctl이 `OTEL_RESOURCE_ATTRIBUTES`를 배선하지 않고, manifest `resource_attributes`는 Codex `environment` 한 키에만 쓰인다. `repository_allowlist`는 완전히 사장 — 미집행 필드의 지위는 [`enrollment-api.md`](enrollment-api.md) §5의 「집행되지 않는 manifest 필드」가 소유한다 | `config/claude.go`, `codex.go:51-54` | M2와 함께 결정한다 — 신원을 토큰 파생으로 통일하면 발신자는 필요 없다 |
+| ~~M4~~ | **해소됨(PROJ-79).** `org.py`의 psycopg 접근이 `OperationalError`를 `BackendUnavailable`로 변환해 RDS 장애가 503(재시도 가능)으로 분류된다(pipeline `5c9c59e`) — 레포 문서 5곳의 "RDS/ClickHouse 장애는 503" 서술이 참이 됐다 | `providers/org.py`의 `OrgProvider._load()` | — |
 | M5 | `pair_call_ids`가 push 단위로만 동작. collector batch가 `tool_decision`/`tool_result`를 갈라놓으면 승인율 KPI가 왜곡된다 | `normalize.py:128`, `call_id.py:46-57` | |
 | M6 | **metrics 파이프라인에 `redaction/secrets` 미적용**(dev·배포 공통) — 메트릭 속성의 시크릿이 그대로 적재된다 | 두 collector 설정의 metrics 파이프라인 | |
 | M11 | processor가 무인증·무TLS·`0.0.0.0:8080`·바디 무제한인데 compose가 호스트에 노출한다. 시드에 원본 토큰이 커밋돼 있고 `TOKEN_HASH_SECRET` 기본값이 고정이다 | `otlp_receiver.py:118-158`, `seed.sql:83-90` | |
-| M12 | collector 이미지가 `:latest`. 파일 아카이브가 무한 append(Fargate 20GiB 소진 시 태스크 사망 — 인프라 주석이 자인) | `.github/workflows/deploy_dev.yml`, infra 설정 주석 | |
+| M12 | collector 이미지가 `:latest`. 파일 아카이브가 무한 append(Fargate 20GiB 소진 시 태스크 사망 — 인프라 주석이 자인) | `.github/workflows/deploy_dev.yml`, infra 설정 주석 | **태그 고정 승인됨(PROJ-79, 실행 대기)** — 현재 구동 버전으로 고정하기로 했다. 실행 계획은 infra ADR-0017 Follow-up. 구동 버전 확인(AWS)이 선행이며, 고정되면 이 행을 해소 표기한다 |
+| M13 | **강등(회사 직결) 경로의 manifest `privacy` 집행 공백.** grpc 테넌트·키링 실패로 강등되면(§6) 벤더가 회사 Collector로 직결돼 1차 집행 지점인 포워더 `Scrub`(§7)이 경로 밖이 된다. 집행은 벤더 설정 계층으로 되돌아가는데, manifest 연결이 Claude는 6필드 중 5, **Codex는 `log_user_prompt` 1필드뿐**이고 `collect_user_email`은 양 벤더 모두 미집행이다. collector `redaction/secrets`는 `allow_all_keys: true`라 이 공백을 메우지 않는다 | telemetryctl `installer/apply.go` 강등 분기, `config/claude.go`·`codex.go`, 두 collector 설정 | **벤더별 설정의 privacy 매핑을 6필드 전부로 확장한다**(Codex에 대응 설정 표면이 실재하는지 확인 선행). 매핑이 불가능한 필드는 이 계약에 그 사실을 명시한다. telemetryctl ADR 0006 Follow-up이 실행 항목을 소유한다 |
 
-**B3·B4가 남아 있는 한 E2E는 성립하지 않는다.** B3는 신호가 들어가느냐를, B4는 들어간 신호가 누구 것인지 아느냐를 깨뜨린다.
+**B3가 남아 있는 한 E2E는 성립하지 않는다.** B3는 신호가 들어가느냐를 깨뜨린다.
+신원 귀속(B4)은 PROJ-77로, RDS 장애 분류(M4)는 PROJ-79으로 해소됐다.
 
 ## 6. 정합이 확인된 부분
 
@@ -122,3 +136,27 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 - Codex 로그는 `attrs["event.name"]`으로, Claude Code는 body 문자열로 매칭한다.
 - Codex는 벤더가 비용을 주지 않아 단가표로 추정하며, `pricing.py`의 단가는 **placeholder**다.
   `cost_source` 외에는 실측과 구분할 수단이 없다.
+- **`otlp.protocol = grpc`는 계약상 유효하지만 클라이언트가 배선하지 못한다.** telemetryctl의
+  forwarder는 grpc 상위 전달을 지원하지 않으므로(`forward.ErrGRPCUnsupported`) grpc 테넌트는 로컬
+  파이프라인 배선에서 제외되고 회사 직결로 강등된다 — 로컬 대시보드에 데이터가 쌓이지 않는다.
+  grpc 테넌트를 구성하기 전에 이 제약을 확인한다(telemetryctl ADR 0001·0006, [`enrollment-api.md`](enrollment-api.md) §6 M9).
+  현재 grpc로 구성된 테넌트는 없다. **강등 상태에서는 §7의 1차 집행 지점(포워더 `Scrub`)이
+  경로 밖이 된다** — 그 privacy 집행 공백은 §5 M13이 소유한다.
+
+## 7. 프라이버시 집행 지점
+
+원문(프롬프트·assistant 응답)과 tool details가 상위로 새지 않게 막는 계층은 셋이고, **맡는 일이 서로 다르다.**
+
+| 계층 | 위치 | 맡는 것 | 덮지 않는 것 |
+|---|---|---|---|
+| **포워더 `Scrub` — 1차 집행 지점** | telemetryctl `internal/otlpdecode` | 회사 manifest `privacy` 기준 **원문·tool details 제거**. `privacyRules`가 `Privacy` 6필드와 1:1 대응 | **회사 직결 강등 경로**(§6 grpc·키링 실패) — 포워더가 경로 밖이라 벤더 설정 계층만 남는다(§5 M13) |
+| Collector `redaction/secrets` | 두 collector 설정 | **시크릿 값 마스킹**(API 키·JWT·PEM 등 정규식) | 원문 속성 제거(`allow_all_keys: true`) · **metrics 파이프라인**(§5 M6) |
+| 정규화 어댑터 allowlist | `ai-telemetry-pipeline` normalizer | `Prompt` payload를 길이·명령 이름으로 한정(pipeline ADR 0001) | collector의 **원본 아카이브(`file/*`) 경로** — 정규화 이전 페이로드가 그대로 남는다 |
+
+manifest 기준의 원문·tool details 제거는 **로컬 파이프라인이 배선된 상태에서는 포워더 한 곳에서만**
+일어난다 — 상위 두 계층은 다른 일을 하므로 포워더 `Scrub`의 회귀는 상위에서 걸러지지 않는다.
+**회사 직결로 강등된 설치에는 포워더 자체가 없다**(§6). 그때 집행은 벤더 설정 계층으로 되돌아가며,
+그 계층의 manifest 연결은 Claude 5/6 · Codex 1/6 · `collect_user_email` 0/2로 불완전하다 — §5 M13.
+회사 수집 범위를 바꾸는 변경은 telemetryctl의 골든 픽스처 테스트가 그 경로의 방어선임을 전제로 리뷰한다.
+(telemetryctl ADR 0003·0006의 "회사 manifest 준수는 전적으로 `internal/forward`가 집행한다"는 단언도
+로컬 파이프라인이 배선된 경로에 한한다 — 강등 경로의 예외는 §5 M13과 ADR 0006 Follow-up이 소유한다.)

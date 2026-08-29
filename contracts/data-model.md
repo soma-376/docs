@@ -63,7 +63,7 @@ tenants ──┬── teams ──── team_memberships ──── members
 |---|---|---|
 | `tenants` | 조직 | 모든 데이터의 테넌트 경계 |
 | `teams` | 팀 | 약속하는 **최소 집계 단위**([`../product/prd.md`](../product/prd.md) §4) |
-| `members` | 구성원 | 관리자 등 웹 사용자는 `cognito_user_sub`로 Cognito 계정과 연결되고, 일반 사용자는 installation을 통해서만 서비스와 연결된다. `(tenant_id, email)` 유니크 |
+| `members` | 구성원 | 웹 사용자(관리자) 인증은 backend Spring Security가 AT·RT를 직접 발급한다(backend ADR-0007 — Cognito 미사용. **구현은 아직 없다** — 현행 관리자 API 인증은 정적 `X-Admin-Token`이다). `cognito_user_sub`는 폐기 예정 컬럼이다(제거 마이그레이션은 그 ADR Follow-up). 일반 사용자는 installation을 통해서만 서비스와 연결된다. `(tenant_id, email)` 유니크 |
 | **`team_memberships`** | 소속 **관계와 기간**(`joined_at` · `left_at`) | **as-of 조인의 근거.** 소속은 시점 함수다 — "지금 어느 팀인가"가 아니라 "그 이벤트 시각에 어느 팀이었나"로 귀속한다 |
 | `installations` | 설치 인스턴스 | 데스크탑의 인증 주체. 사람 계정과 다르다 |
 | `telemetry_tokens` | `ptt_` 토큰의 **해시**만 | 해시 방식은 [`enrollment-api.md`](enrollment-api.md) §4가 소유 |
@@ -85,5 +85,5 @@ tenants ──┬── teams ──── team_memberships ──── members
 | # | 항목 |
 |---|---|
 | B3 | dev ECS에 enrollment 서버가 미배포이고, 로컬에서 backend와 파이프라인이 서로 다른 Postgres를 본다. 공유 RDS `controlplane`을 양쪽이 보는 구성으로 수렴시켜야 한다 — [`telemetry-ingest.md`](telemetry-ingest.md) §5 |
-| — | `enrollment` 스키마를 공유 RDS에 **부트스트랩하는 주체가 정해지지 않았다**(infra `AGENTS.md` 5장 (H), infra ADR-0023 Follow-up). 현재 dev는 파이프라인 DDL을 psql로 수동 삽입하는 우회를 안내한다 |
+| — | **부트스트랩 주체는 backend Flyway로 확정됐다**(backend ADR-0009). enrollment 서버가 dev에 배포되기 전까지는 backend 명세 §9.4의 로컬 `bootRun` 레시피가 **공식 잠정 절차**다 — 파이프라인 DDL을 psql로 직접 넣는 우회는 폐지됐다. 남은 것은 enrollment 서버의 dev 배포와 ECS에서 마이그레이션을 실행할 자리(infra 새 ADR 예정)다 |
 | — | Signal Database(ClickHouse) 쪽 스키마는 이 계약의 범위 밖이다. `enriched_events`의 컬럼 계약은 [`telemetry-ingest.md`](telemetry-ingest.md)가 다룬다 |

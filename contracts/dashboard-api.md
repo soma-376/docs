@@ -28,8 +28,9 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 
 - **Dashboard API 서버가 어디에 사는가** — `pulsemetry-backend`에 모듈로 추가할지 별도 레포로 뗄지.
   이것은 크로스레포 결정이므로 [`../adr/`](../adr/README.md)에 ADR로 남긴다.
-- 사람 계정 로그인·세션 — Cognito 경로가 prod 설계에만 있고 구현이 없다(infra ADR-0008).
-  `members.cognito_user_sub`가 그 연결 지점이다([`data-model.md`](data-model.md) §3).
+- 사람 계정 로그인·세션 — backend Spring Security가 AT·RT를 직접 발급한다(backend ADR-0007 Accepted, 구현은 아직 없다).
+  Cognito는 쓰지 않는다([허브 ADR-0001](../adr/0001-otlp-authentication-model.md) — infra ADR-0008은 Superseded).
+  `members.cognito_user_sub`는 폐기 예정 컬럼이다([`data-model.md`](data-model.md) §3).
 - 인가 모델 — 현재 로그인 사용자는 사실상 관리자뿐이다. 팀장 권한 분리는 Non-goal이다.
 - 응답 스키마의 버저닝 정책 — enrollment API가 `DisallowUnknownFields`로 겪는 문제
   ([`enrollment-api.md`](enrollment-api.md) §6 M7)를 반복하지 않는다.

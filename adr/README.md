@@ -27,20 +27,26 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 | 번호 | 제목 | Status |
 |---|---|---|
-| — | *아직 없다* | — |
+| 0001 | [OTLP 인증은 불투명 토큰을 애플리케이션 계층에서 검증한다](0001-otlp-authentication-model.md) | Accepted |
+| 0002 | [manifest 배정 단위는 tenant다](0002-manifest-assignment-unit-is-tenant.md) | Accepted |
+| 0003 | [텔레메트리 파이프라인은 별도 레포로 유지하고 collector만 backend로 이관한다](0003-telemetry-pipeline-repo-boundary.md) | Accepted |
 
-새 ADR은 `0001`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0004`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
-- enrollment 스키마의 부트스트랩 주체 — backend Flyway인가 infra인가 ([`../contracts/data-model.md`](../contracts/data-model.md) §5)
 - Dashboard API 서버의 소재 — `pulsemetry-backend` 모듈인가 별도 레포인가 ([`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2)
 - 계약 응답 스키마의 버저닝 정책 — tolerant reader로 갈 것인가 ([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §6 M7)
 - Provider 공시 단가표의 소유·갱신 주체와 저장 위치 ([`../product/prd.md`](../product/prd.md) §8-5)
-- **텔레메트리 파이프라인의 소유 레포** — backend ADR-0006(`Proposed`)이 `ai-telemetry-pipeline`을
-  `pulsemetry-backend`로 병합하는 것을 제안한다. 두 레포의 코드·계약에 걸리므로 스코프 규칙상 허브 결정이다.
-  현재 단일 레포 ADR로 있는 것은 이 규칙이 생기기 전이기 때문이며, 재배치 여부는 팀이 정한다
-  ([`../architecture/repos.md`](../architecture/repos.md))
+
+**후보에서 결정으로 옮겨간 것:**
+
+- 텔레메트리 파이프라인의 소유 레포 → [ADR 0003](0003-telemetry-pipeline-repo-boundary.md)
+  (전체 병합 기각 — backend ADR-0006은 `Superseded by 허브 ADR 0003`으로 닫혔다)
+- OTLP 인증 모델 → [ADR 0001](0001-otlp-authentication-model.md)
+- manifest 배정 단위 → [ADR 0002](0002-manifest-assignment-unit-is-tenant.md)
+- enrollment 스키마의 부트스트랩 주체 → 결정 완료(backend Flyway — backend ADR-0009,
+  [`../contracts/data-model.md`](../contracts/data-model.md) §5). 남은 것은 ECS 실행 자리(infra 새 ADR 예정)
 
 ---
 
@@ -52,19 +58,19 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
 | `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
-| `pulsemetry-backend` | `docs/adr/` | ❌ 없음 | 9 (0001–0009) | **한국어 슬러그.** 새 ADR은 `0010`부터 |
-| `telemetryctl` | `docs/adr/` | ❌ 없음 | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
-| `ai-telemetry-pipeline` | — | — | 0 | `docs/adr/` 자체가 없다. 첫 ADR을 쓸 때 템플릿과 함께 만든다 |
+| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 9 (0001–0009) | **한국어 슬러그.** 새 ADR은 `0010`부터 |
+| `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
+| `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 0 | 크로스레포·제품 결정만 |
+| `docs` (이 레포) | `adr/` | 위 표 | 3 | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
 ### 인덱스가 없는 레포에 ADR을 추가할 때
 
-`pulsemetry-backend`·`telemetryctl`에는 `docs/adr/README.md` 인덱스가 없다.
-그 레포에 ADR을 추가할 때 인덱스를 새로 만들지는 **사용자에게 물어본다** — infra 형식을 따르면 되지만,
-없는 상태에 팀이 합의했을 수 있다.
+인덱스가 없는 레포는 `ai-telemetry-pipeline` 하나다
+(`pulsemetry-backend`·`telemetryctl`은 PROJ-79에서 infra 형식의 인덱스를 만들었다).
+그 레포에 ADR을 추가할 때 인덱스를 새로 만들지는 **사용자에게 물어본다** — infra 형식을 따르면 된다.
 
 ### ADR을 각 레포에 분산해 두는 이유
 
@@ -72,5 +78,5 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 ### 파일명 관례
 
-레포마다 다르다. **그 레포의 기존 관례를 따른다** — infra는 영어 슬러그, backend·telemetryctl은 한국어 슬러그다.
+레포마다 다르다. **그 레포의 기존 관례를 따른다** — infra와 이 허브는 영어 슬러그, backend·telemetryctl·ai-telemetry-pipeline은 한국어 슬러그다.
 전 레포 통일은 하지 않는다. 파일명을 바꾸면 기존 ADR 간 상호 링크가 깨진다.

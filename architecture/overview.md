@@ -29,8 +29,7 @@ flowchart LR
     WEB["Web Browser"]
   end
   subgraph GW["Gateway"]
-    APIGW["API Gateway (ALB)<br>경계 auth 계층 · WAF"]
-    IDP["Identity Provider"]
+    APIGW["API Gateway (ALB)<br>TLS 종단 · 라우팅 · WAF"]
     CDN["CDN"]
   end
   subgraph SVC["Service"]
@@ -67,7 +66,6 @@ flowchart LR
   WEB --> APIGW
   WEB --> CDN
   CDN --> STATIC
-  APIGW -. "토큰 검증" .-> IDP
   APIGW --> AUTH
   APIGW --> DASH
   APIGW -- "인가 정보 동반" --> COL
@@ -91,13 +89,13 @@ flowchart LR
   DASH -.-> OBS
 ```
 
-9개 논리 영역 / 21개 컴포넌트.
+9개 논리 영역 / 20개 컴포넌트.
 
 | 영역 | 컴포넌트 | 역할 |
 |---|---|---|
 | Client (수집) | AI tool, Desktop Application, Local Store | 개발자 로컬 머신. 시그널이 발생하고 1차 가공·전달되는 곳 |
 | Client (대시보드) | Web Browser | 관리자가 데이터를 소비하는 곳 |
-| Gateway | API Gateway (ALB), Identity Provider, CDN | 외부 → 내부의 유일한 진입점과 정적 자산 배포 |
+| Gateway | API Gateway (ALB), CDN | 외부 → 내부의 유일한 진입점과 정적 자산 배포 |
 | Service | Auth Service, Dashboard API | 요청-응답형(동기) 서비스 |
 | Telemetry Pipeline | Collector, Masker, Adapter, Enricher | 수집 데이터의 단방향 처리 파이프라인 |
 | Database | User Database, Signal Database (ClickHouse) | 조회용 정형 데이터 |
@@ -108,7 +106,8 @@ flowchart LR
 ### 짚어둘 것
 
 - **Local Store는 서버 구성요소가 아니다.** 사용자 기기의 저장소이며 조직 관리자가 보는 데이터베이스에 포함되지 않는다.
-- **인증은 두 자리로 나뉜다.** 요청마다 토큰이 유효한지 보는 것은 경계(API Gateway → Identity Provider 위임)이고,
+- **인증은 두 자리로 나뉜다.** 요청마다 토큰이 유효한지 보는 것은 각 경로의 애플리케이션 인증 계층이고
+  (OTLP 경로는 현행 auth-proxy → backend Spring Security 이관 예정 — [허브 ADR-0001](../adr/0001-otlp-authentication-model.md) · backend ADR-0007),
   계정을 만들고 초대 코드로 설치 인스턴스에 토큰을 발급하는 것은 Auth Service다.
   그래서 Auth Service는 미들웨어가 아니라 Dashboard API와 같은 레이어의 서비스이며, 데스크탑을 상대하는 서버다.
 - **토큰이 유효하다는 것과 그 주체가 이 자원에 접근해도 된다는 것은 다르다.** 후자는 각 서비스의 security layer가 판정한다.
@@ -117,7 +116,8 @@ flowchart LR
   조직별 계약 단가는 User Database에 있고 조회 시에만 쓰인다.
 - **시나리오 카탈로그는 가용성을 담지 않는다.** 가용성은 Dashboard API가 조회 시 판정한다(I-14).
 - **Observability에 남는 것은 운영 로그이지 감사 로그가 아니다.** 감사 로그는 저장 대상·저장소가 정해지지 않아 범위 밖이다.
-- **경계 auth 계층은 로드밸런서에서 종결한다.** 애플리케이션 서버 안에도, 별도 auth 서버에도 두지 않는다.
+- **인증 종결 지점은 애플리케이션 계층이다.** 경계(ALB)는 TLS 종단과 라우팅만 하고, 별도 auth 서버(외부 IdP)를 두지 않는다
+  ([허브 ADR-0001](../adr/0001-otlp-authentication-model.md)이 infra ADR-0008의 ALB 인증안을 대체했다).
 
 ### 가공은 두 단계, 비용은 이원화
 
@@ -168,12 +168,12 @@ Signal DB에 이미 있는 공시 기준 금액은 계약 미입력 조직의 �
 ### C — 인증
 
 ```
-검증   Client → API Gateway → Identity Provider
+검증   Client → API Gateway(TLS 종단) → 앱 인증 계층
 발급   Client → API Gateway → Auth Service → User Database
 ```
 
-- **검증은 경계에서 끝난다.** 서명·발급자·만료를 확인하고 통과한 요청만 내부로 넘긴다.
-- **발급은 Auth Service가 한다.** Identity Provider는 발급 절차에 관여하지 않는다.
+- **검증은 앱 인증 계층이 한다.** 경계는 TLS 종단과 라우팅까지만 책임진다(허브 ADR-0001).
+- **발급은 Auth Service가 한다.** 외부 IdP는 발급에도 검증에도 관여하지 않는다.
 - 설치 인스턴스 인증: 초대 코드 → `installation_token`(`pit_`)과 `telemetry_token`(`ptt_`) 발급 → 둘 다 OS 키링.
   자세한 계약은 [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md).
 - 주체가 다르다 — 웹은 **사람(관리자) 계정**, 데스크탑은 **설치 인스턴스(installation)**다.
@@ -251,7 +251,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 
 | # | 규칙 | 어겼을 때 |
 |---|---|---|
-| I-1 | 외부 트래픽은 API Gateway(경계 auth 계층)를 통과한다. 클라이언트가 Collector·Dashboard API를 직접 호출하는 경로는 없다 | 인증 우회, 테넌트 위조 |
+| I-1 | 외부 트래픽은 API Gateway(단일 진입점)를 통과한다. 클라이언트가 Collector·Dashboard API를 직접 호출하는 경로는 없다 | 인증 우회, 테넌트 위조 |
 | I-2 | Masker를 거치지 않은 데이터는 어떤 서버 저장소에도 쓰지 않는다 | 마스킹 전 PII 영속화 (되돌릴 수 없음) |
 | I-3 | 파이프라인 4단계를 건너뛰지 않는다 | 스키마 미변환 데이터가 Signal DB에 유입 |
 | I-4 | Signal Database 쓰기는 Enricher만 수행한다 | 보강 안 된 레코드 혼입, 집계 신뢰도 붕괴 |
@@ -285,7 +285,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 | Adapter의 공시 단가 환산 | placeholder 단가표 |
 | Auth Service | `pulsemetry-backend`의 enrollment-api가 설치 토큰 발급까지 담당. 사람 계정·로그인은 미구현 |
 | Dashboard API | 미착수. frontend 레포도 없다 |
-| Identity Provider | dev는 auth-proxy가 OTLP 경로를 담당. Cognito 경로는 prod 설계만 존재 |
+| ~~Identity Provider~~ (목표 구조에서 제거 — 허브 ADR-0001) | 인증은 앱 계층: 현행 auth-proxy(OTLP), backend Spring Security로 이관 예정. Cognito 구축 코드는 의도적 잔존(제거 예정) |
 
 **I-2 · I-8 · 흐름 D는 아직 구조적으로 미충족**이다. MVP 진행 단계로 보면 자연스럽지만, 미충족 상태임을 문서가 감추지 않는다.
 
