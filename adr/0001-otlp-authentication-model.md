@@ -44,7 +44,8 @@ enrollment가 발급한 불투명 `ptt_` 토큰을 auth-proxy가 해시 조회�
   되어 전 클라이언트가 401을 받는다. 회전하려면 토큰 전량 재발급 또는 이중 키 검증이 선행돼야 한다.
   발급자(backend)와 검증자(auth-proxy → 이관 후 backend)가 같은 시크릿을 받아야 한다.
 - 불투명 토큰에는 클레임이 없다. manifest revision 대조 같은 클레임 기반 검사는 텔레메트리 경로에
-  적용할 수 없고, 사용자 세션 AT가 실리는 관리자 API 경로의 몫이다(backend ADR-0007).
+  적용할 수 없고, 사용자 세션 AT가 실리는 관리자 API 경로의 몫이다(backend ADR-0007 —
+  그 경로와 AT 발급은 아직 구현되지 않았다).
 
 ## Alternatives Considered
 
@@ -72,7 +73,8 @@ enrollment가 발급한 불투명 `ptt_` 토큰을 auth-proxy가 해시 조회�
 - backend ADR-0007(collector 이관 + 인증 계층)이 진행되면 검증 지점을 Spring Security로 이관하고,
   auth-proxy와 그 ECR 레포(`soma-376/auth-proxy`)·infra ADR-0022의 4·8·10번(태스크·리스너·로그 그룹)을
   함께 정리한다.
-- `lib/prod/edge-stack.ts`의 Cognito 구축 코드는 **의도적 잔존**이다 — Spring Security 대체 시 함께 걷어낸다.
+- `lib/prod/edge-stack.ts`의 Cognito 구축 코드(User Pool·`AuthenticateCognitoAction`)와 모드 A의
+  `/v1/*` `authenticateJwt`는 **의도적 잔존**이다 — Spring Security 대체 시 함께 걷어낸다.
 
 ## References
 

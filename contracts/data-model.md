@@ -63,7 +63,7 @@ tenants ──┬── teams ──── team_memberships ──── members
 |---|---|---|
 | `tenants` | 조직 | 모든 데이터의 테넌트 경계 |
 | `teams` | 팀 | 약속하는 **최소 집계 단위**([`../product/prd.md`](../product/prd.md) §4) |
-| `members` | 구성원 | 웹 사용자(관리자) 인증은 backend Spring Security가 AT·RT를 직접 발급한다(backend ADR-0007 — Cognito 미사용). `cognito_user_sub`는 폐기 예정 컬럼이다(제거 마이그레이션은 그 ADR Follow-up). 일반 사용자는 installation을 통해서만 서비스와 연결된다. `(tenant_id, email)` 유니크 |
+| `members` | 구성원 | 웹 사용자(관리자) 인증은 backend Spring Security가 AT·RT를 직접 발급한다(backend ADR-0007 — Cognito 미사용. **구현은 아직 없다** — 현행 관리자 API 인증은 정적 `X-Admin-Token`이다). `cognito_user_sub`는 폐기 예정 컬럼이다(제거 마이그레이션은 그 ADR Follow-up). 일반 사용자는 installation을 통해서만 서비스와 연결된다. `(tenant_id, email)` 유니크 |
 | **`team_memberships`** | 소속 **관계와 기간**(`joined_at` · `left_at`) | **as-of 조인의 근거.** 소속은 시점 함수다 — "지금 어느 팀인가"가 아니라 "그 이벤트 시각에 어느 팀이었나"로 귀속한다 |
 | `installations` | 설치 인스턴스 | 데스크탑의 인증 주체. 사람 계정과 다르다 |
 | `telemetry_tokens` | `ptt_` 토큰의 **해시**만 | 해시 방식은 [`enrollment-api.md`](enrollment-api.md) §4가 소유 |

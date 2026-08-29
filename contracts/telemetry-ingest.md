@@ -113,6 +113,7 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 | M6 | **metrics 파이프라인에 `redaction/secrets` 미적용**(dev·배포 공통) — 메트릭 속성의 시크릿이 그대로 적재된다 | 두 collector 설정의 metrics 파이프라인 | |
 | M11 | processor가 무인증·무TLS·`0.0.0.0:8080`·바디 무제한인데 compose가 호스트에 노출한다. 시드에 원본 토큰이 커밋돼 있고 `TOKEN_HASH_SECRET` 기본값이 고정이다 | `otlp_receiver.py:118-158`, `seed.sql:83-90` | |
 | M12 | collector 이미지가 `:latest`. 파일 아카이브가 무한 append(Fargate 20GiB 소진 시 태스크 사망 — 인프라 주석이 자인) | `.github/workflows/deploy_dev.yml`, infra 설정 주석 | **태그 고정 승인됨(PROJ-79, 실행 대기)** — 현재 구동 버전으로 고정하기로 했다. 실행 계획은 infra ADR-0017 Follow-up. 구동 버전 확인(AWS)이 선행이며, 고정되면 이 행을 해소 표기한다 |
+| M13 | **강등(회사 직결) 경로의 manifest `privacy` 집행 공백.** grpc 테넌트·키링 실패로 강등되면(§6) 벤더가 회사 Collector로 직결돼 1차 집행 지점인 포워더 `Scrub`(§7)이 경로 밖이 된다. 집행은 벤더 설정 계층으로 되돌아가는데, manifest 연결이 Claude는 6필드 중 5, **Codex는 `log_user_prompt` 1필드뿐**이고 `collect_user_email`은 양 벤더 모두 미집행이다. collector `redaction/secrets`는 `allow_all_keys: true`라 이 공백을 메우지 않는다 | telemetryctl `installer/apply.go` 강등 분기, `config/claude.go`·`codex.go`, 두 collector 설정 | **벤더별 설정의 privacy 매핑을 6필드 전부로 확장한다**(Codex에 대응 설정 표면이 실재하는지 확인 선행). 매핑이 불가능한 필드는 이 계약에 그 사실을 명시한다. telemetryctl ADR 0006 Follow-up이 실행 항목을 소유한다 |
 
 **B3가 남아 있는 한 E2E는 성립하지 않는다.** B3는 신호가 들어가느냐를 깨뜨린다.
 신원 귀속(B4)은 PROJ-77로, RDS 장애 분류(M4)는 PROJ-79으로 해소됐다.
@@ -139,7 +140,8 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
   forwarder는 grpc 상위 전달을 지원하지 않으므로(`forward.ErrGRPCUnsupported`) grpc 테넌트는 로컬
   파이프라인 배선에서 제외되고 회사 직결로 강등된다 — 로컬 대시보드에 데이터가 쌓이지 않는다.
   grpc 테넌트를 구성하기 전에 이 제약을 확인한다(telemetryctl ADR 0001·0006, [`enrollment-api.md`](enrollment-api.md) §6 M9).
-  현재 grpc로 구성된 테넌트는 없다.
+  현재 grpc로 구성된 테넌트는 없다. **강등 상태에서는 §7의 1차 집행 지점(포워더 `Scrub`)이
+  경로 밖이 된다** — 그 privacy 집행 공백은 §5 M13이 소유한다.
 
 ## 7. 프라이버시 집행 지점
 
@@ -147,11 +149,13 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 
 | 계층 | 위치 | 맡는 것 | 덮지 않는 것 |
 |---|---|---|---|
-| **포워더 `Scrub` — 1차 집행 지점** | telemetryctl `internal/otlpdecode` | 회사 manifest `privacy` 기준 **원문·tool details 제거**. `privacyRules`가 `Privacy` 6필드와 1:1 대응 | — |
+| **포워더 `Scrub` — 1차 집행 지점** | telemetryctl `internal/otlpdecode` | 회사 manifest `privacy` 기준 **원문·tool details 제거**. `privacyRules`가 `Privacy` 6필드와 1:1 대응 | **회사 직결 강등 경로**(§6 grpc·키링 실패) — 포워더가 경로 밖이라 벤더 설정 계층만 남는다(§5 M13) |
 | Collector `redaction/secrets` | 두 collector 설정 | **시크릿 값 마스킹**(API 키·JWT·PEM 등 정규식) | 원문 속성 제거(`allow_all_keys: true`) · **metrics 파이프라인**(§5 M6) |
 | 정규화 어댑터 allowlist | `ai-telemetry-pipeline` normalizer | `Prompt` payload를 길이·명령 이름으로 한정(pipeline ADR 0001) | collector의 **원본 아카이브(`file/*`) 경로** — 정규화 이전 페이로드가 그대로 남는다 |
 
-manifest 기준의 원문·tool details 제거는 **포워더 한 곳에서만** 일어난다 — 상위 두 계층은 다른 일을
-하므로 포워더 `Scrub`의 회귀는 상위에서 걸러지지 않는다. 회사 수집 범위를 바꾸는 변경은
-telemetryctl의 골든 픽스처 테스트가 그 경로의 방어선임을 전제로 리뷰한다.
+manifest 기준의 원문·tool details 제거는 **로컬 파이프라인이 배선된 상태에서는 포워더 한 곳에서만**
+일어난다 — 상위 두 계층은 다른 일을 하므로 포워더 `Scrub`의 회귀는 상위에서 걸러지지 않는다.
+**회사 직결로 강등된 설치에는 포워더 자체가 없다**(§6). 그때 집행은 벤더 설정 계층으로 되돌아가며,
+그 계층의 manifest 연결은 Claude 5/6 · Codex 1/6 · `collect_user_email` 0/2로 불완전하다 — §5 M13.
+회사 수집 범위를 바꾸는 변경은 telemetryctl의 골든 픽스처 테스트가 그 경로의 방어선임을 전제로 리뷰한다.
 (telemetryctl ADR 0003·0006 — "회사 manifest 준수는 전적으로 `internal/forward`가 집행한다".)
