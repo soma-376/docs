@@ -158,4 +158,5 @@ manifest 기준의 원문·tool details 제거는 **로컬 파이프라인이 �
 **회사 직결로 강등된 설치에는 포워더 자체가 없다**(§6). 그때 집행은 벤더 설정 계층으로 되돌아가며,
 그 계층의 manifest 연결은 Claude 5/6 · Codex 1/6 · `collect_user_email` 0/2로 불완전하다 — §5 M13.
 회사 수집 범위를 바꾸는 변경은 telemetryctl의 골든 픽스처 테스트가 그 경로의 방어선임을 전제로 리뷰한다.
-(telemetryctl ADR 0003·0006 — "회사 manifest 준수는 전적으로 `internal/forward`가 집행한다".)
+(telemetryctl ADR 0003·0006의 "회사 manifest 준수는 전적으로 `internal/forward`가 집행한다"는 단언도
+로컬 파이프라인이 배선된 경로에 한한다 — 강등 경로의 예외는 §5 M13과 ADR 0006 Follow-up이 소유한다.)
