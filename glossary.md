@@ -30,7 +30,8 @@
 |---|---|---|
 | **signal** | OTel 신호(logs·metrics·traces) 한 건 | |
 | **raw** | 이 제품에서는 **가공 전** 시그널을 뜻한다 | **마스킹 전 원본이 아니다.** Raw Object Storage의 데이터는 이미 마스킹을 마쳤다 |
-| **Masker** | 서버 측 2차 마스킹. 조직별 규칙 적용 | 데몬의 1차 집행과 짝. 현재 구현은 collector의 전역 `redaction`뿐. backend 모듈 지도는 이 노드를 `telemetry-collector` 모듈의 `masking` 패키지로 둔다 |
+| **Collector** | OTLP 수신 노드 | **한 낱말이 셋을 가리킨다** — 대문자 `Collector`는 이 노드, 소문자 `collector`는 현행 구현인 OTel Collector 컨테이너(ADR 0005가 걷어낸다), `telemetry-collector`는 이관 후 backend 모듈이다 |
+| **Masker** | 서버 측 2차 마스킹. 조직별 규칙 적용 | 데몬의 1차 집행과 짝. **현재**는 OTel Collector 컨테이너의 전역 `redaction`이 부분 구현하고, **이관 후**에는 backend `telemetry-collector` 모듈의 `masking` 패키지가 맡는다. 이름이 닮았을 뿐 다른 런타임이다 |
 | **Adapter** | 벤더별 OTel 형식 → 내부 공통 스키마 변환 + **공시 단가 기준 금액** 환산 | backend 모듈 `telemetry-adapter`. 벤더별 매핑은 그 안의 `source` 패키지다 |
 | **Enricher** | 조직·팀·사용자 결합 + 시간 집계 후 적재 | **Signal DB에 쓰는 유일한 주체** (I-4). backend는 결합(`telemetry-enricher`)과 적재(`telemetry-persistence`) 두 모듈로 구현하며 쓰기 소유는 후자다 |
 | **post-processor** | `ai-telemetry-pipeline`의 `telemetry-processor` 앱을 부르는 컨테이너·ECR 이름 | 같은 앱이다 — infra 문서는 post-processor, 파이프라인 레포는 telemetry-processor |

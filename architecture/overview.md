@@ -157,7 +157,9 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - 프롬프트는 정책에 따라 이 경로를 탄다. Privacy가 꺼져 있으면 데몬이 전송 전에 제거하므로 서버에 도달하지 않는다.
 - Masker가 어느 조직의 규칙을 적용할지는 함께 넘어온 인가 정보로 정한다.
 
-실제 구현 경로(auth-proxy → collector → processor)와 그 계약은 [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다.
+위 네 이름은 **논리 노드**다. 실제 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)와 그 계약은
+[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다. 노드 `Collector`와 그 컨테이너는
+다른 것이다([`../glossary.md`](../glossary.md)).
 
 ### B — 대시보드 조회 (읽기)
 
