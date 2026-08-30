@@ -36,17 +36,16 @@ backend ADR-0009) 규율은 유지되지 않았다. 세 지점에서 확인된�
 
 - **파이프라인 로직을 `pulsemetry-backend`로 병합한다.** 이관이 끝나면 `ai-telemetry-pipeline`은
   아카이브한다. RDB(enrollment) 스키마의 진실원은 backend Flyway 그대로다.
-- **배포 단위는 앱 하나(`:apps:telemetry-ingest`)와 OTel Collector 컨테이너 하나다.** 앱은 collector의
-  앞(인증·신원 헤더 부여)과 뒤(정규화·보강·적재) 양쪽에 서며, 두 경로는 같은 앱의 서로 다른 엔드포인트다.
-- **auth-proxy를 폐기한다.** OTLP 인증은 collector 앞단의 Spring Security가 맡는다 —
-  [ADR 0001](0001-otlp-authentication-model.md)이 정한 종착지에 도달하는 것이며, 불투명 토큰을
-  해시 조회로 검증하는 방식과 신원 헤더 4종은 바뀌지 않는다.
-- **마스킹은 collector 설정이 계속 담당한다.** `redaction`·`secrets` processor를 앱이 재구현하지 않는다.
+- **배포 단위는 하나다.** 그 안의 계층 배치와 OTel Collector 존치 여부는
+  [ADR 0005](0005-single-app-telemetry-topology.md)가 정한다.
+- **OTLP 인증은 Spring Security가 맡는다.** [ADR 0001](0001-otlp-authentication-model.md)이 정한
+  종착지에 도달하는 것이며, 불투명 토큰을 해시 조회로 검증하는 방식은 바뀌지 않는다.
+  auth-proxy는 별도 배포 단위로 남지 않는다.
+- **서버 마스킹을 생략하지 않는다.** 데몬의 1차 제거를 신뢰해 서버에서 건너뛰지 않는다.
+  구현 위치는 ADR 0005가 정한다.
 - **파이프라인 단계는 `:libs:` 모듈로 나누고 앱은 조립만 한다.** 경계 기준은 backend ADR-0008의
   쓰기 소유권·패키지 단일 공급·의존 방향 규칙이며, 모듈 목록은 backend `docs/module-map.md`가 소유한다.
 - **ClickHouse 스키마 소유권을 backend로 옮긴다.** 0003이 파이프라인에 남겼던 것을 뒤집는다.
-- **collector 설정 두 벌의 당사자가 `backend` ↔ `infra`로 바뀐다.** 이관과 같은 시점에 신원 전파
-  3요소를 자동 대조하는 검사를 둔다 — 0003이 유보한 감지 장치가 여기다.
 
 ## Alternatives Considered
 
@@ -78,7 +77,6 @@ backend ADR-0009) 규율은 유지되지 않았다. 세 지점에서 확인된�
 - 특성화 테스트와 golden fixture 확보가 이식 착수의 전제다. 확보 전에는 이식을 시작하지 않는다.
 - ClickHouse DDL의 적용 메커니즘을 backend에서 정한다. Flyway가 아니므로 진실원과 적용 경로를
   같은 결정으로 묶는다.
-- collector 설정 두 벌의 자동 대조 검사를 collector config 이관과 같은 PR에 둔다.
 - infra ADR-0017 재검토, 0018 폐지(파생 DSN 시크릿이 불필요해진다), 0022의 4·8·10번 정리,
   0023 폐기, 새 배포 단위의 ECR 레포 신설.
 - 계약 문서([`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md) ·

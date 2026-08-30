@@ -75,8 +75,9 @@ libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이�
   구현이 없는 것이지 소유가 없는 것이 아니다.
 - **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2).
 - **파이프라인 병합이 채택됐다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
-  파이프라인 로직 전체가 이 레포로 오며, 도착지는 앱 하나(`:apps:telemetry-ingest`)와 그 앞뒤에 붙는
-  `:libs:` 단계 모듈들이다. collector config와 **ClickHouse 스키마 소유권**도 함께 이동한다.
+  파이프라인 로직 전체가 이 레포로 오며, 도착지는 앱 하나(`:apps:telemetry-ingest`)와 단계별
+  `:libs:` 모듈들이다. **OTel Collector 바이너리는 쓰지 않고 수집·마스킹도 이 레포가 구현한다**
+  ([허브 ADR 0005](../adr/0005-single-app-telemetry-topology.md)). **ClickHouse 스키마 소유권**도 함께 이동한다.
   auth-proxy는 폐기되고 OTLP 인증은 이 레포의 Spring Security가 맡는다(ADR-0007,
   [허브 ADR 0001](../adr/0001-otlp-authentication-model.md)). 모듈 목록은 레포의 `docs/module-map.md`가 소유한다.
   **이관은 아직 진행 전이다** — 현재 동작하는 파이프라인은 `ai-telemetry-pipeline`에 있다.

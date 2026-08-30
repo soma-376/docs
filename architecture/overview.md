@@ -146,8 +146,8 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - AI tool → Desktop은 **push**다. 벤더의 OTel exporter가 데몬의 loopback 수신기로 보낸다. 로그 파일 감시가 아니다.
 - 데몬은 배치를 두 갈래로 나눈다: ① 원본 바이트 → 상위 전달(프라이버시 1차 집행) ② 정규화 결과 → Local Store(개인용).
 - 파이프라인은 단방향 4단계다. 정상 흐름에 되돌아오는 경로가 없다.
-- **단계 간 전달은 한 배포 단위 안의 in-process 호출이다**([`../adr/0004-telemetry-pipeline-repo-merge.md`](../adr/0004-telemetry-pipeline-repo-merge.md)).
-  단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 큐나 스트림을 두지 않는다. Collector만 별도 컨테이너다.
+- **네 단계는 한 애플리케이션 안의 모듈이고 전달은 in-process 호출이다**([`../adr/0005-single-app-telemetry-topology.md`](../adr/0005-single-app-telemetry-topology.md)).
+  단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 네트워크 홉도 큐도 두지 않는다.
 - **Masker에서 경로가 갈라진다** — ① 마스킹 완료 시그널 보존(Object Storage) ② 가공 계속(Adapter).
   이 분기가 raw-first 원칙을 구조로 구현한 지점이다. 다만 여기서 "raw"는 마스킹 전 원본이 아니라 **가공 전** 시그널이다.
 - Adapter 이후 변환이 실패하면 그 시그널은 Object Storage에만 남는다. 이것이 흐름 D의 복구 원천이며, 별도 DLQ에 의존하지 않는다.
