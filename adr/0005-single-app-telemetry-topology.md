@@ -11,10 +11,12 @@ Accepted — [ADR 0001](0001-otlp-authentication-model.md)의 신원 헤더 전�
 (이관 원본). [ADR 0004](0004-telemetry-pipeline-repo-merge.md)가 병합을 정한 뒤 남은 것은 그 안의
 토폴로지, 곧 **인증을 어디에 두고 OTel Collector를 존치할 것인가**다.
 
-**인증 계층이 RDB를 읽어야 한다.** 이 계층은 토큰 검증·재발급에 더해, AT에 실린 manifest revision을
-RDB의 현재 값과 대조해 요청을 승인하거나 반려한다(backend ADR-0007). 인증을 ALB·Cognito로 빼면
-사원 정보를 읽기 위한 데이터 모델이 인증 쪽에 따로 생긴다 — ADR 0004가 없애려던 "읽기 때문에 양쪽에
-엔티티가 생긴다"를 인증에서 그대로 재생산한다. 따라서 인증은 데이터 모델과 같은 애플리케이션에 있어야 한다.
+**인증 계층이 RDB를 읽어야 한다.** OTLP 경로의 `ptt_`는 불투명 토큰이라 클레임이 없다. 검증은 해시로
+`telemetry_tokens`를 찾아 `installations`·`members`·`tenants`까지 조인해야 성립하고, 거부 사유 아홉 가지가
+전부 그 조인의 컬럼에서 나온다([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §4,
+[ADR 0001](0001-otlp-authentication-model.md)). 인증을 ALB·Cognito로 빼면 그 테이블을 읽기 위한 데이터
+모델이 인증 쪽에 따로 생긴다 — ADR 0004가 없애려던 "읽기 때문에 양쪽에 엔티티가 생긴다"를 인증에서
+그대로 재생산한다. 따라서 인증은 데이터 모델과 같은 애플리케이션에 있어야 한다.
 
 **Spring Security는 Collector에 심을 수 없다.** Collector는 Go 단일 바이너리이고 공식 이미지로
 뜬다. 공식 이미지를 유지하면 인증 결과를 Collector 너머로 실어 나르는 장치가 필요하다 —
@@ -23,9 +25,9 @@ RDB의 현재 값과 대조해 요청을 승인하거나 반려한다(backend AD
 [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md) §5 B4다.
 
 **순서를 뒤집는 것도 성립하지 않는다.** Collector를 앞에 두면 인증 전 요청이 먼저 처리된다.
-Collector 단계에는 마스킹 후 원본을 외부 저장소에 적재하는 책임이 있으므로, manifest revision 대조로
-**반려될 요청의 데이터가 이미 영속화된 뒤** 반려된다. 낡은 정책으로 수집된 데이터를 받지 않겠다는
-대조의 목적이 무력화된다.
+Collector 단계에는 마스킹 후 원본을 외부 저장소에 적재하는 책임이 있으므로, 폐기된 토큰이나 정지된
+tenant의 요청처럼 **거부될 데이터가 이미 영속화된 뒤** 거부된다. 인증을 통과하지 못한 데이터는 애초에
+파이프라인에 들어오지 않아야 한다.
 
 결정하지 않으면 병합 작업이 계층 배치를 정하지 못한 채 시작되고, 인증·마스킹·적재의 책임 경계가
 구현 순서로 정해진다.
@@ -50,8 +52,8 @@ Collector 단계에는 마스킹 후 원본을 외부 저장소에 적재하는 
   ADR 0004가 병합을 채택한 근거가 "규율로 정합성을 유지하는 데 실패했다"인데, 같은 성격의 규율을
   둘이나 남긴다. 기각.
 - **Collector 선행 — Collector → Spring Security + 변환·보강** — 홉이 하나 줄고 프록시가 필요 없다.
-  그러나 위 Context의 적재 문제로 manifest revision 대조가 무력화된다. 기각.
-- **ALB·Cognito 인증** — 인증이 manifest revision 대조를 위해 RDB를 읽어야 하므로 성립하지 않는다.
+  그러나 위 Context의 적재 문제로 인증이 걸러야 할 데이터가 먼저 영속화된다. 기각.
+- **ALB·Cognito 인증** — `ptt_` 검증이 RDB 조인이라 ALB가 대신할 수 없다.
   [ADR 0001](0001-otlp-authentication-model.md)이 이미 같은 결론으로 기각했다.
 
 ## Consequences/Tradeoffs
@@ -80,6 +82,9 @@ Collector 단계에는 마스킹 후 원본을 외부 저장소에 적재하는 
 - infra ADR-0007(공식 이미지라 ECR 제외)·0017(config 주입)·0022(dev config 미포크)·0023(dev
   auth-proxy)을 정리한다. 네 결정 모두 collector 컨테이너의 존재를 전제한다.
 - dev compose에서 collector 서비스를 제거한다.
+- 데몬 → 서버 구간이 계속 불투명 `ptt_`를 쓸지, 사용자 AT로 바뀔지는 backend ADR-0007 Follow-up의
+  미결이다. AT로 바뀌면 manifest revision 대조가 이 경로에도 들어오므로 인증 계층의 책임이 늘어난다.
+  이 결정의 계층 순서는 어느 쪽이든 그대로다.
 - [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md) §3·§4의 검증 주체와 신원
   전파 서술은 전환이 실제로 끝난 시점에 고친다. 그전까지 현행 서술이 사실이다.
 
@@ -87,5 +92,5 @@ Collector 단계에는 마스킹 후 원본을 외부 저장소에 적재하는 
 
 - [ADR 0001](0001-otlp-authentication-model.md)(인증 모델, 부분 대체됨) ·
   [ADR 0004](0004-telemetry-pipeline-repo-merge.md)(병합 결정)
-- backend ADR-0007(인증 계층·manifest revision 대조) · ADR-0008(모듈 경계)
+- backend ADR-0007(인증 계층) · ADR-0008(모듈 경계) · ADR-0010(파이프라인 단계 모듈)
 - infra ADR-0007 · 0017 · 0022 · 0023
