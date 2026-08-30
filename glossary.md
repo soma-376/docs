@@ -30,9 +30,9 @@
 |---|---|---|
 | **signal** | OTel 신호(logs·metrics·traces) 한 건 | |
 | **raw** | 이 제품에서는 **가공 전** 시그널을 뜻한다 | **마스킹 전 원본이 아니다.** Raw Object Storage의 데이터는 이미 마스킹을 마쳤다 |
-| **Masker** | 서버 측 2차 마스킹. 조직별 규칙 적용 | 데몬의 1차 집행과 짝. 현재 구현은 collector의 전역 `redaction`뿐 |
-| **Adapter** | 벤더별 OTel 형식 → 내부 공통 스키마 변환 + **공시 단가 기준 금액** 환산 | |
-| **Enricher** | 조직·팀·사용자 결합 + 시간 집계 후 적재 | **Signal DB에 쓰는 유일한 주체** (I-4) |
+| **Masker** | 서버 측 2차 마스킹. 조직별 규칙 적용 | 데몬의 1차 집행과 짝. 현재 구현은 collector의 전역 `redaction`뿐. backend 모듈 지도는 이 노드를 `telemetry-collector` 모듈의 `masking` 패키지로 둔다 |
+| **Adapter** | 벤더별 OTel 형식 → 내부 공통 스키마 변환 + **공시 단가 기준 금액** 환산 | backend 모듈 `telemetry-adapter`. 벤더별 매핑은 그 안의 `source` 패키지다 |
+| **Enricher** | 조직·팀·사용자 결합 + 시간 집계 후 적재 | **Signal DB에 쓰는 유일한 주체** (I-4). backend는 결합(`telemetry-enricher`)과 적재(`telemetry-persistence`) 두 모듈로 구현하며 쓰기 소유는 후자다 |
 | **post-processor** | `ai-telemetry-pipeline`의 `telemetry-processor` 앱을 부르는 컨테이너·ECR 이름 | 같은 앱이다 — infra 문서는 post-processor, 파이프라인 레포는 telemetry-processor |
 | **재처리** | Object Storage → Adapter부터 다시 태우는 운영 개입 경로 | Masker를 다시 태우지 않는다 (I-9). 멱등해야 한다 (I-10) |
 

@@ -148,6 +148,9 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - 파이프라인은 단방향 4단계다. 정상 흐름에 되돌아오는 경로가 없다.
 - **네 단계는 한 애플리케이션 안의 모듈이고 전달은 in-process 호출이다**([`../adr/0005-single-app-telemetry-topology.md`](../adr/0005-single-app-telemetry-topology.md)).
   단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 네트워크 홉도 큐도 두지 않는다.
+  여기의 네 단계는 **데이터흐름 노드**를 센 것이다. ADR 0005가 "다섯 계층"이라 부르는 것은 앞뒤로
+  인증과 적재를 더한 **애플리케이션 내부 계층**이고, backend 모듈 수는 또 다르다 — 축이 셋이므로
+  숫자를 맞대어 읽지 않는다. 노드와 모듈의 대응은 backend `docs/module-map.md`가 담는다.
 - **Masker에서 경로가 갈라진다** — ① 마스킹 완료 시그널 보존(Object Storage) ② 가공 계속(Adapter).
   이 분기가 raw-first 원칙을 구조로 구현한 지점이다. 다만 여기서 "raw"는 마스킹 전 원본이 아니라 **가공 전** 시그널이다.
 - Adapter 이후 변환이 실패하면 그 시그널은 Object Storage에만 남는다. 이것이 흐름 D의 복구 원천이며, 별도 DLQ에 의존하지 않는다.
@@ -240,6 +243,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 - Raw Signal Object Storage의 읽기 목적은 **재처리 둘뿐**이다. 어느 쪽도 사람이 원본을 열람하는 경로가 아니다.
   대시보드에 원본 조회 화면·API가 없는 이유다.
 - **Signal Database에 쓰는 주체는 Enricher 하나뿐**이다. 다른 컴포넌트가 직접 쓰기 시작하면 데이터 일관성이 즉시 깨진다.
+  backend는 이 노드를 결합과 적재 두 모듈로 나눠 구현하며 쓰기는 적재 모듈 하나만 한다 — 주체가 하나라는 제약은 그대로다.
 - User Database에 쓰는 주체는 둘이고 다루는 영역이 겹치지 않는다. 파이프라인에서 이 저장소를 보는 것은 **Masker뿐**이다.
 - 어떤 저장소에도 자격증명 원문을 쓰지 않는다(I-11).
 
