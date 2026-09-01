@@ -68,15 +68,18 @@ backend ADR-0009) 규율은 유지되지 않았다. 세 지점에서 확인된�
 
 - 동작하는 Python 약 3,800라인을 재작성해야 한다. 특성화 테스트 확보가 선행 비용으로 남는다.
 - 전환이 끝날 때까지 구 파이프라인과 새 앱이 병존하고, 문서는 두 시대를 함께 설명해야 한다.
-- backend가 Postgres와 ClickHouse 두 저장소의 DDL을 관리한다. Flyway는 ClickHouse를 다루지 않으므로
+- backend가 Postgres와 ClickHouse 두 저장소의 DDL을 관리한다. Flyway는 ClickHouse를 지원 목록에
+  두고 있으나(foundational 한정), 구현 모듈 `flyway-database-clickhouse`는 10.24.0에서 배포가 멈춰
+  backend가 Spring Boot 4.1.0으로 해석하는 `flyway-core` 12.4.0 계열에는 존재하지 않는다.
   적용 경로를 따로 정해야 한다.
 - 레포 경계를 전제로 확정했던 infra 결정들이 다시 열린다.
 
 ## Follow-up
 
 - 특성화 테스트와 golden fixture를 확보하기 전에는 이식을 시작하지 않는다.
-- ClickHouse DDL의 적용 메커니즘을 backend에서 정한다. Flyway가 아니므로 진실원과 적용 경로를
-  같은 결정으로 묶는다.
+- ClickHouse DDL의 적용 메커니즘을 backend에서 정한다. 현재 Flyway 버전으로는 적용할 수 없으므로
+  진실원과 적용 경로를 같은 결정으로 묶는다. `flyway-database-clickhouse`가 12.x 이상으로 재개되면
+  이 항목을 재검토한다.
 - infra ADR-0017 재검토, 0018 폐지(파생 DSN 시크릿이 불필요해진다), 0022의 4·8·10번 정리,
   0023 폐기, 새 배포 단위의 ECR 레포 신설.
 - 계약 문서([`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md) ·
