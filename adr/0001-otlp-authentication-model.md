@@ -4,6 +4,9 @@
 
 Accepted — infra ADR-0008(인증 이원화: 대시보드 Cognito + OTLP ALB jwt-validation)을 전면 대체한다.
 이 ADR이 OTLP 인증 모델을 소유하고, infra ADR-0008은 `Superseded by`로 닫는다.
+부분 대체: [ADR 0005](0005-single-app-telemetry-topology.md)가 Decision 5(신원 헤더 4종 부여 후
+collector가 전파)를 대체한다 — 파이프라인이 단일 앱이 되어 전파할 홉이 없어진다. 나머지 결정
+(불투명 토큰 2단 모델, 앱 계층 검증, ALB 인증 미채택)은 유효하다.
 
 ## Context
 

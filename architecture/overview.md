@@ -146,13 +146,20 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - AI tool → Desktop은 **push**다. 벤더의 OTel exporter가 데몬의 loopback 수신기로 보낸다. 로그 파일 감시가 아니다.
 - 데몬은 배치를 두 갈래로 나눈다: ① 원본 바이트 → 상위 전달(프라이버시 1차 집행) ② 정규화 결과 → Local Store(개인용).
 - 파이프라인은 단방향 4단계다. 정상 흐름에 되돌아오는 경로가 없다.
+- **네 단계는 한 애플리케이션 안의 모듈이고 전달은 in-process 호출이다**([`../adr/0005-single-app-telemetry-topology.md`](../adr/0005-single-app-telemetry-topology.md)).
+  단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 네트워크 홉도 큐도 두지 않는다.
+  여기의 네 단계는 **데이터흐름 노드**를 센 것이다. ADR 0005가 "다섯 계층"이라 부르는 것은 앞뒤로
+  인증과 적재를 더한 **애플리케이션 내부 계층**이고, backend 모듈 수는 또 다르다 — 축이 셋이므로
+  숫자를 맞대어 읽지 않는다. 노드와 모듈의 대응은 backend `docs/module-map.md`가 담는다.
 - **Masker에서 경로가 갈라진다** — ① 마스킹 완료 시그널 보존(Object Storage) ② 가공 계속(Adapter).
   이 분기가 raw-first 원칙을 구조로 구현한 지점이다. 다만 여기서 "raw"는 마스킹 전 원본이 아니라 **가공 전** 시그널이다.
 - Adapter 이후 변환이 실패하면 그 시그널은 Object Storage에만 남는다. 이것이 흐름 D의 복구 원천이며, 별도 DLQ에 의존하지 않는다.
 - 프롬프트는 정책에 따라 이 경로를 탄다. Privacy가 꺼져 있으면 데몬이 전송 전에 제거하므로 서버에 도달하지 않는다.
 - Masker가 어느 조직의 규칙을 적용할지는 함께 넘어온 인가 정보로 정한다.
 
-실제 구현 경로(auth-proxy → collector → processor)와 그 계약은 [`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다.
+위 네 이름은 **논리 노드**다. 실제 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)와 그 계약은
+[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다. 노드 `Collector`와 그 컨테이너는
+다른 것이다([`../glossary.md`](../glossary.md)).
 
 ### B — 대시보드 조회 (읽기)
 
@@ -238,6 +245,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 - Raw Signal Object Storage의 읽기 목적은 **재처리 둘뿐**이다. 어느 쪽도 사람이 원본을 열람하는 경로가 아니다.
   대시보드에 원본 조회 화면·API가 없는 이유다.
 - **Signal Database에 쓰는 주체는 Enricher 하나뿐**이다. 다른 컴포넌트가 직접 쓰기 시작하면 데이터 일관성이 즉시 깨진다.
+  backend는 이 노드를 결합과 적재 두 모듈로 나눠 구현하며 쓰기는 적재 모듈 하나만 한다 — 주체가 하나라는 제약은 그대로다.
 - User Database에 쓰는 주체는 둘이고 다루는 영역이 겹치지 않는다. 파이프라인에서 이 저장소를 보는 것은 **Masker뿐**이다.
 - 어떤 저장소에도 자격증명 원문을 쓰지 않는다(I-11).
 
@@ -296,7 +304,6 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 | # | 질문 | 막히는 작업 | 상태 |
 |---|---|---|---|
 | Q5 | Adapter의 변환 대상 스키마와 Enricher 보강 항목의 세부 필드 | 파이프라인 전체 | 부분 확정 — 구조는 *공통 스키마 + provider별 확장*으로 확정. 필드 미정 |
-| Q6 | 파이프라인 단계 간 전달 방식: 동기 호출인가 큐/스트림인가 | 배포 구조 | 실패분 복구는 Object Storage가 원천이므로 큐 DLQ에 의존하지 않는다. 처리량·백프레셔 관점만 남음 |
 | Q8 | 수집 트래픽과 대시보드 트래픽의 부하 분리 | Gateway 구성 | 부분 확정 — 같은 Gateway를 공유하고 경로로 분기. 뒷단 분리는 미정 |
 | Q10 | Self-hosted 배포 시 구성 차이 + 관측성 대체 경로 | 배포 아키텍처 | 미정 |
 | Q11 | 각 컴포넌트의 기술 스택·런타임 | 전체 | 부분 확정 — Signal DB = ClickHouse, User DB = PostgreSQL, 경계 = ALB, 관측성 = CloudWatch · Sentry |

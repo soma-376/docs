@@ -2,8 +2,10 @@
 
 ## Status
 
-Accepted — backend ADR-0006(파이프라인 전체 병합)을 이 허브 결정으로 대체한다.
-backend 0006은 `Superseded by`로 닫는다(제안 자체는 기각).
+Superseded by [ADR 0004](0004-telemetry-pipeline-repo-merge.md) — 전체 병합을 다시 채택했으므로
+"레포 2개 체제 유지 · collector만 이관 · ClickHouse 소유권 잔류"는 더 이상 유효하지 않다.
+기각 근거였던 "스키마 두 벌 문제는 진실원 지정으로 풀렸다"가 유지되지 않은 것이 재론의 근거다.
+RDB(enrollment) 진실원이 backend Flyway라는 결정은 0004에서도 그대로다.
 
 ## Context
 
