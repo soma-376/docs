@@ -111,7 +111,7 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 | ~~M4~~ | **해소됨(PROJ-79).** `org.py`의 psycopg 접근이 `OperationalError`를 `BackendUnavailable`로 변환해 RDS 장애가 503(재시도 가능)으로 분류된다(pipeline `5c9c59e`) — 레포 문서 5곳의 "RDS/ClickHouse 장애는 503" 서술이 참이 됐다 | `providers/org.py`의 `OrgProvider._load()` | — |
 | M5 | `pair_call_ids`가 push 단위로만 동작. collector batch가 `tool_decision`/`tool_result`를 갈라놓으면 승인율 KPI가 왜곡된다 | `normalize.py:128`, `call_id.py:46-57` | |
 | M6 | **metrics 파이프라인에 `redaction/secrets` 미적용**(dev·배포 공통) — 메트릭 속성의 시크릿이 그대로 적재된다 | 두 collector 설정의 metrics 파이프라인 | |
-| M11 | processor가 무인증·무TLS·`0.0.0.0:8080`·바디 무제한인데 compose가 호스트에 노출한다. 시드에 원본 토큰이 커밋돼 있고 `TOKEN_HASH_SECRET` 기본값이 고정이다 | `otlp_receiver.py:118-158`, `seed.sql:83-90` | |
+| M11 | processor가 무인증·무TLS·`0.0.0.0:8080`·바디 무제한인데 compose가 호스트에 노출한다. 시드에 원본 토큰이 커밋돼 있고 `TOKEN_HASH_SECRET` 기본값이 고정이다 | `ai-telemetry-pipeline`의 `otlp_receiver.py`, `sql/rds/seed.sql`의 telemetry_tokens 블록 | **구 파이프라인에만 남은 항목이다.** 대체 경로인 `:apps:telemetry-ingest`는 인증이 가장 앞이고(§8) 원본 바디에 상한이 있으며, backend `LocalSeeder`는 원문 토큰을 저장하지 않는다. 구 파이프라인이 내려가면 함께 사라진다(PROJ-106) |
 | M12 | collector 이미지가 `:latest`. 파일 아카이브가 무한 append(Fargate 20GiB 소진 시 태스크 사망 — 인프라 주석이 자인) | `.github/workflows/deploy_dev.yml`, infra 설정 주석 | **태그 고정 승인됨(PROJ-79, 실행 대기)** — 현재 구동 버전으로 고정하기로 했다. 실행 계획은 infra ADR-0017 Follow-up. 구동 버전 확인(AWS)이 선행이며, 고정되면 이 행을 해소 표기한다 |
 | M13 | **강등(회사 직결) 경로의 manifest `privacy` 집행 공백.** grpc 테넌트·키링 실패로 강등되면(§6) 벤더가 회사 Collector로 직결돼 1차 집행 지점인 포워더 `Scrub`(§7)이 경로 밖이 된다. 집행은 벤더 설정 계층으로 되돌아가는데, manifest 연결이 Claude는 6필드 중 5, **Codex는 `log_user_prompt` 1필드뿐**이고 `collect_user_email`은 양 벤더 모두 미집행이다. collector `redaction/secrets`는 `allow_all_keys: true`라 이 공백을 메우지 않는다 | telemetryctl `installer/apply.go` 강등 분기, `config/claude.go`·`codex.go`, 두 collector 설정 | **벤더별 설정의 privacy 매핑을 6필드 전부로 확장한다**(Codex에 대응 설정 표면이 실재하는지 확인 선행). 매핑이 불가능한 필드는 이 계약에 그 사실을 명시한다. telemetryctl ADR 0006 Follow-up이 실행 항목을 소유한다 |
 
@@ -160,3 +160,33 @@ manifest 기준의 원문·tool details 제거는 **로컬 파이프라인이 �
 회사 수집 범위를 바꾸는 변경은 telemetryctl의 골든 픽스처 테스트가 그 경로의 방어선임을 전제로 리뷰한다.
 (telemetryctl ADR 0003·0006의 "회사 manifest 준수는 전적으로 `internal/forward`가 집행한다"는 단언도
 로컬 파이프라인이 배선된 경로에 한한다 — 강등 경로의 예외는 §5 M13과 ADR 0006 Follow-up이 소유한다.)
+
+## 8. 상태 코드와 재시도 — `:apps:telemetry-ingest`
+
+근거는 [ADR 0006](../adr/0006-otlp-ingest-retry-and-status-contract.md)이다.
+
+> **이 절은 새 경로의 계약이다.** 배포된 경로는 아직 auth-proxy → collector → processor 이고
+> §1·§3·§4가 그 현행을 서술한다. 두 서술이 어긋나 보이는 것은 전환이 진행 중이기 때문이며,
+> 앞의 절들을 고치는 시점은 [ADR 0005](../adr/0005-single-app-telemetry-topology.md) Follow-up이
+> **infra가 collector 컨테이너를 내리는 때**로 못박았다.
+
+| 상태 | 언제 | 데몬의 처분 |
+|---|---|---|
+| `200` | 성공. 레코드 0건도 성공이다 | — |
+| `401` | 토큰이 없거나 검증에 실패했다. 사유 열한 가지가 **하나의 본문**으로 접힌다(§3) | 토큰 무효화 후 재발급·재시도 **1회** |
+| `400` | 디코드·압축 해제 실패, **그리고 영구 실패** — ClickHouse가 요청을 거부(4xx)했거나 스키마가 어긋났다 | **즉시 폐기** |
+| `405`·`415`·`404` | 메서드·`Content-Type`·경로가 계약 밖이다. 본문은 `text/plain` | 즉시 폐기 |
+| `413` | 압축 전 원본 바디가 상한을 넘었다 | 즉시 폐기 |
+| `503` + `Retry-After` | 일시 장애 — RDS·ClickHouse에 닿지 못했거나 아카이브에 실패했다 | 재시도 |
+
+- **영구 실패가 4xx인 이유는 데몬이 4xx만 폐기하기 때문이다.** `classify()`는 5xx를 전부
+  재시도하므로 500으로는 폐기가 만들어지지 않는다. 이 표는 데몬의 판정에 맞춰 서버를 정한
+  것이며, **telemetryctl은 이 결정으로 바뀌지 않는다.**
+- **서버에 큐도 내부 재시도도 없다.** 버퍼는 데몬의 큐(64건·32 MiB, 논블로킹 드롭)이고,
+  변환 이후가 실패해도 원본은 아카이브에 남아 재처리의 원천이 된다.
+- **`Retry-After`는 하한이다.** 데몬은 자기 백오프와 `max`를 취하고 15초에서 자른다.
+  크게 잡으면 3회 예산을 기다림으로 태운다.
+- **`429`는 쓰지 않는다.** 데몬과 프록시 양쪽이 이미 지원하는 채널이지만 서버가 낸 적이 없다.
+  도입 조건은 ADR 0006 Follow-up이 소유한다.
+- **인증이 가장 앞이다.** 401은 405·415보다 먼저 난다 — 통과한 요청만 수집 단계에 닿아야
+  거부될 데이터가 외부 저장소에 적재되지 않는다([ADR 0005](../adr/0005-single-app-telemetry-topology.md)).
