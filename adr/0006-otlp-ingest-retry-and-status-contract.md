@@ -98,6 +98,7 @@ PROJ-100 의 테스트에만 존재한다.
 - **ClickHouse 응답의 4xx 는 영구 실패로 분류한다.** `429` 와 `408` 만 예외로 일시 실패다.
   "4xx 까지 전부 일시 장애"라는 현행 분류를 이 항목이 대체한다. 보강 단계가 연결 계열만 좁게
   잡는 것은 그대로 둔다 — 두 단계가 같은 원칙 위에 서게 되는 것이 이 변경의 요점이다.
+  그 전파된 영구 오류(스키마 드리프트 등)와 정규화 실패를 400 으로 매핑하는 것은 조립 앱이다.
 - **디코드·압축 해제 실패는 `400` 그대로다.** 원본 바디 상한을 넘으면 `413` 이다.
 - **`405` · `404` · `415` 는 상위 리시버의 문자열과 본문 형식을 그대로 유지한다.**
 - **서버는 큐도 내부 재시도도 두지 않는다.** 요청 스레드가 곧 압력이다. 버퍼는 데몬의 큐이고,
@@ -202,7 +203,12 @@ PROJ-100 의 테스트에만 존재한다.
   ./gradlew :libs:telemetry-persistence:test --tests '*ClickHouseErrorClassificationTest*'
   ```
 
-- 503 응답에 `Retry-After` 가 있다 — 조립 앱의 E2E 테스트가 확인한다.
+- 503 응답에 `Retry-After` 가 있고 400 에는 없다 — 조립 앱의 `OtlpStatusContractTest` 가 확인한다.
+
+  ```bash
+  ./gradlew :apps:telemetry-ingest:test --tests '*OtlpStatusContractTest*'
+  ```
+
 - `telemetryctl` 은 바뀌지 않는다. `internal/forward/retry.go` 의 `classify()` 와 그 테스트가
   이 결정의 상대편이며, 이 ADR 은 그 표에 맞춰 서버를 정한 것이지 표를 바꾼 것이 아니다.
 
