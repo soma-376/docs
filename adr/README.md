@@ -32,8 +32,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0003 | [텔레메트리 파이프라인은 별도 레포로 유지하고 collector만 backend로 이관한다](0003-telemetry-pipeline-repo-boundary.md) | Superseded by [ADR 0004](0004-telemetry-pipeline-repo-merge.md) |
 | 0004 | [텔레메트리 파이프라인을 backend 레포로 병합한다](0004-telemetry-pipeline-repo-merge.md) | Accepted |
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted |
+| 0006 | [OTLP ingest 는 영구 실패를 4xx 로, 일시 실패를 503 으로 돌려주고 큐를 두지 않는다](0006-otlp-ingest-retry-and-status-contract.md) | Accepted |
 
-새 ADR은 `0006`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0007`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
@@ -47,6 +48,8 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
   (backend 레포로 병합. **대체됨(ADR 0004)** — 0003의 전체 병합 기각 결정은 더 이상 유효하지 않다)
 - OTLP 인증 모델 → [ADR 0001](0001-otlp-authentication-model.md)
 - 파이프라인 내부 토폴로지(인증 위치·Collector 존치) → [ADR 0005](0005-single-app-telemetry-topology.md)
+- OTLP ingest 의 재시도·백프레셔 정책과 503 계약 → [ADR 0006](0006-otlp-ingest-retry-and-status-contract.md)
+  (ADR 0005 Follow-up 이 열어 둔 항목)
 - manifest 배정 단위 → [ADR 0002](0002-manifest-assignment-unit-is-tenant.md)
 - enrollment 스키마의 부트스트랩 주체 → 결정 완료(backend Flyway — backend ADR-0009,
   [`../contracts/data-model.md`](../contracts/data-model.md) §5). 남은 것은 ECS 실행 자리(infra 새 ADR 예정)
@@ -61,11 +64,11 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
 | `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
-| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 10 (0001–0010) | **한국어 슬러그.** 새 ADR은 `0011`부터 |
+| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 17 (0001–0017) | **한국어 슬러그.** 새 ADR은 `0018`부터 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 5 | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 6 | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
