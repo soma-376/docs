@@ -64,7 +64,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
 | `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
-| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 16 (0001–0016) | **한국어 슬러그.** 새 ADR은 `0017`부터 |
+| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 17 (0001–0017) | **한국어 슬러그.** 새 ADR은 `0018`부터 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
