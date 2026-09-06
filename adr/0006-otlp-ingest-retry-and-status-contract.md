@@ -209,6 +209,14 @@ PROJ-100 의 테스트에만 존재한다.
   ./gradlew :apps:telemetry-ingest:test --tests '*OtlpStatusContractTest*'
   ```
 
+- 인증 조회의 RDS 장애가 503 + `Retry-After` 이고 401·403 이 아니다 — `classify()` 가 그 둘을
+  `dispositionAuth` 로 묶어 토큰을 폐기하기 때문이다. 조립 앱의 `TelemetryIngestE2eTest` 가 실제
+  HTTP 로 확인한다.
+
+  ```bash
+  ./gradlew :apps:telemetry-ingest:test --tests '*TelemetryIngestE2eTest*'
+  ```
+
 - `telemetryctl` 은 바뀌지 않는다. `internal/forward/retry.go` 의 `classify()` 와 그 테스트가
   이 결정의 상대편이며, 이 ADR 은 그 표에 맞춰 서버를 정한 것이지 표를 바꾼 것이 아니다.
 

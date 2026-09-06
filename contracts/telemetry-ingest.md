@@ -114,6 +114,7 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 | M11 | processor가 무인증·무TLS·`0.0.0.0:8080`·바디 무제한인데 compose가 호스트에 노출한다. 시드에 원본 토큰이 커밋돼 있고 `TOKEN_HASH_SECRET` 기본값이 고정이다 | `ai-telemetry-pipeline`의 `otlp_receiver.py`, `sql/rds/seed.sql`의 telemetry_tokens 블록 | **구 파이프라인에만 남은 항목이다.** 대체 경로인 `:apps:telemetry-ingest`는 인증이 가장 앞이고(§8) 원본 바디에 상한이 있으며, backend `LocalSeeder`는 원문 토큰을 저장하지 않는다. 구 파이프라인이 내려가면 함께 사라진다(PROJ-106) |
 | M12 | collector 이미지가 `:latest`. 파일 아카이브가 무한 append(Fargate 20GiB 소진 시 태스크 사망 — 인프라 주석이 자인) | `.github/workflows/deploy_dev.yml`, infra 설정 주석 | **태그 고정 승인됨(PROJ-79, 실행 대기)** — 현재 구동 버전으로 고정하기로 했다. 실행 계획은 infra ADR-0017 Follow-up. 구동 버전 확인(AWS)이 선행이며, 고정되면 이 행을 해소 표기한다 |
 | M13 | **강등(회사 직결) 경로의 manifest `privacy` 집행 공백.** grpc 테넌트·키링 실패로 강등되면(§6) 벤더가 회사 Collector로 직결돼 1차 집행 지점인 포워더 `Scrub`(§7)이 경로 밖이 된다. 집행은 벤더 설정 계층으로 되돌아가는데, manifest 연결이 Claude는 6필드 중 5, **Codex는 `log_user_prompt` 1필드뿐**이고 `collect_user_email`은 양 벤더 모두 미집행이다. collector `redaction/secrets`는 `allow_all_keys: true`라 이 공백을 메우지 않는다 | telemetryctl `installer/apply.go` 강등 분기, `config/claude.go`·`codex.go`, 두 collector 설정 | **벤더별 설정의 privacy 매핑을 6필드 전부로 확장한다**(Codex에 대응 설정 표면이 실재하는지 확인 선행). 매핑이 불가능한 필드는 이 계약에 그 사실을 명시한다. telemetryctl ADR 0006 Follow-up이 실행 항목을 소유한다 |
+| M14 | **구 processor의 신원 스탬핑이 첫 항목만 덮어쓴다**(`_stamp_identity`의 `remaining.pop`). 리소스 속성은 배열이라 같은 키가 여러 번 올 수 있고 normalizer는 마지막 값을 읽으므로, 인증된 사용자가 `tenant.id`·`developer.installation_id`를 두 번 실어 **다른 조직·설치로 데이터를 저장**시킬 수 있다 | `otlp_receiver.py:61-80` | **구 파이프라인에만 남은 항목이다.** `:apps:telemetry-ingest`는 같은 키의 모든 항목을 덮어쓴다(backend `IdentityStamp`, PROJ-105 리뷰 반영). 구 파이프라인이 내려가면 함께 사라진다(PROJ-106) |
 
 **B3가 남아 있는 한 E2E는 성립하지 않는다.** B3는 신호가 들어가느냐를 깨뜨린다.
 신원 귀속(B4)은 PROJ-77로, RDS 장애 분류(M4)는 PROJ-79으로 해소됐다.
@@ -177,7 +178,7 @@ manifest 기준의 원문·tool details 제거는 **로컬 파이프라인이 �
 | `400` | 디코드·압축 해제 실패(깨진 gzip·protobuf 포함), **그리고 영구 실패** — 정규화가 실패했거나, 보강 단계가 RDS 스키마 드리프트 같은 영구 오류를 만났거나, ClickHouse가 요청을 거부(4xx)했다 | **즉시 폐기** |
 | `405`·`415`·`404` | 메서드·`Content-Type`·경로가 계약 밖이다. 본문은 `text/plain` | 즉시 폐기 |
 | `413` | 압축 전 원본 바디가 상한을 넘었다 | 즉시 폐기 |
-| `503` + `Retry-After` | 일시 장애 — RDS·ClickHouse에 닿지 못했거나, ClickHouse 스키마가 아직 적용되지 않았거나, 아카이브에 실패했다. 분류되지 않은 예외의 기본값도 503이다 | 재시도 |
+| `503` + `Retry-After` | 일시 장애 — RDS·ClickHouse에 닿지 못했거나(**인증 조회의 RDS 장애 포함** — 401·403으로 접으면 데몬이 멀쩡한 토큰을 버린다), ClickHouse 스키마가 아직 적용되지 않았거나, 아카이브에 실패했다. 분류되지 않은 예외의 기본값도 503이다 | 재시도 |
 
 - **영구 실패가 4xx인 이유는 데몬이 4xx만 폐기하기 때문이다.** `classify()`는 5xx를 전부
   재시도하므로 500으로는 폐기가 만들어지지 않는다. 이 표는 데몬의 판정에 맞춰 서버를 정한
