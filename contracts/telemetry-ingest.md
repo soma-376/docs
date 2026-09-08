@@ -2,9 +2,9 @@
 
 | 항목 | 내용 |
 |---|---|
-| 당사자 | **`telemetryctl`** (데몬 forwarder) → **`ai-telemetry-pipeline`** (auth-proxy · collector · processor), 배포 설정은 **`infra`** |
+| 당사자 | **`telemetryctl`** (데몬 forwarder) → 현재 **`ai-telemetry-pipeline`** (auth-proxy · collector · processor), 목표 **`pulsemetry-backend/:apps:telemetry-ingest`**. 배포 설정은 **`infra`** |
 | 관련 ADR | **허브 [ADR-0001](../adr/0001-otlp-authentication-model.md)(OTLP 인증 모델 — infra ADR-0008을 대체)** / infra ADR-0017(collector config 주입), ADR-0023(dev auth-proxy) / telemetryctl ADR-0001(인라인 프록시 토폴로지) |
-| 상태 | 확정 — **미해결 배선 1건**(§5 B3) |
+| 상태 | 현재 배포 경로는 §1·§3·§4(**미해결 배선 B3**), 목표 경로의 상태·재시도 계약은 §8. 배포 전환은 PROJ-106 |
 
 데스크탑/CLI에서 발생한 OTLP 신호가 회사 파이프라인에 들어가 **누구 것인지 알 수 있는 상태로** 적재되기까지의 계약이다.
 
@@ -110,7 +110,7 @@ collector가 헤더를 통과시키려면 **세 요소가 모두** 있어야 한
 | M3 | `developer.*`·`tenant.id` 리소스 속성 발신자 부재. telemetryctl이 `OTEL_RESOURCE_ATTRIBUTES`를 배선하지 않고, manifest `resource_attributes`는 Codex `environment` 한 키에만 쓰인다. `repository_allowlist`는 완전히 사장 — 미집행 필드의 지위는 [`enrollment-api.md`](enrollment-api.md) §5의 「집행되지 않는 manifest 필드」가 소유한다 | `config/claude.go`, `codex.go:51-54` | M2와 함께 결정한다 — 신원을 토큰 파생으로 통일하면 발신자는 필요 없다 |
 | ~~M4~~ | **해소됨(PROJ-79).** `org.py`의 psycopg 접근이 `OperationalError`를 `BackendUnavailable`로 변환해 RDS 장애가 503(재시도 가능)으로 분류된다(pipeline `5c9c59e`) — 레포 문서 5곳의 "RDS/ClickHouse 장애는 503" 서술이 참이 됐다 | `providers/org.py`의 `OrgProvider._load()` | — |
 | M5 | `pair_call_ids`가 push 단위로만 동작. collector batch가 `tool_decision`/`tool_result`를 갈라놓으면 승인율 KPI가 왜곡된다 | `normalize.py:128`, `call_id.py:46-57` | |
-| M6 | **metrics 파이프라인에 `redaction/secrets` 미적용**(dev·배포 공통) — 메트릭 속성의 시크릿이 그대로 적재된다 | 두 collector 설정의 metrics 파이프라인 | |
+| M6 | **metrics 미마스킹은 현재·목표 경로 모두 미해결이다.** 구 Collector뿐 아니라 새 ingest 앱도 메트릭 속성의 시크릿을 마스킹하지 않는다. 새 경로에서는 30일 보존 S3 아카이브에도 남는다 | 두 collector 설정; backend `Signal.METRICS.masked = false`, ADR 0012 Negative | 서버 재마스킹·마스킹 전 저장 금지(허브 ADR 0005, PRD §6-2)가 목표 불변식이다. 현재 구현은 이를 충족하지 못한다. backend의 M6 수정 후 이 행을 해소하며, Collector 컨테이너 종료만으로 해소하지 않는다 |
 | M11 | processor가 무인증·무TLS·`0.0.0.0:8080`·바디 무제한인데 compose가 호스트에 노출한다. 시드에 원본 토큰이 커밋돼 있고 `TOKEN_HASH_SECRET` 기본값이 고정이다 | `ai-telemetry-pipeline`의 `otlp_receiver.py`, `sql/rds/seed.sql`의 telemetry_tokens 블록 | **구 파이프라인에만 남은 항목이다.** 대체 경로인 `:apps:telemetry-ingest`는 인증이 가장 앞이고(§8) 원본 바디에 상한이 있으며, backend `LocalSeeder`는 원문 토큰을 저장하지 않는다. 구 파이프라인이 내려가면 함께 사라진다(PROJ-106) |
 | M12 | collector 이미지가 `:latest`. 파일 아카이브가 무한 append(Fargate 20GiB 소진 시 태스크 사망 — 인프라 주석이 자인) | `.github/workflows/deploy_dev.yml`, infra 설정 주석 | **태그 고정 승인됨(PROJ-79, 실행 대기)** — 현재 구동 버전으로 고정하기로 했다. 실행 계획은 infra ADR-0017 Follow-up. 구동 버전 확인(AWS)이 선행이며, 고정되면 이 행을 해소 표기한다 |
 | M13 | **강등(회사 직결) 경로의 manifest `privacy` 집행 공백.** grpc 테넌트·키링 실패로 강등되면(§6) 벤더가 회사 Collector로 직결돼 1차 집행 지점인 포워더 `Scrub`(§7)이 경로 밖이 된다. 집행은 벤더 설정 계층으로 되돌아가는데, manifest 연결이 Claude는 6필드 중 5, **Codex는 `log_user_prompt` 1필드뿐**이고 `collect_user_email`은 양 벤더 모두 미집행이다. collector `redaction/secrets`는 `allow_all_keys: true`라 이 공백을 메우지 않는다 | telemetryctl `installer/apply.go` 강등 분기, `config/claude.go`·`codex.go`, 두 collector 설정 | **벤더별 설정의 privacy 매핑을 6필드 전부로 확장한다**(Codex에 대응 설정 표면이 실재하는지 확인 선행). 매핑이 불가능한 필드는 이 계약에 그 사실을 명시한다. telemetryctl ADR 0006 Follow-up이 실행 항목을 소유한다 |
