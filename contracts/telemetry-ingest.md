@@ -201,3 +201,10 @@ manifest 기준의 원문·tool details 제거는 **로컬 파이프라인이 �
   매핑 표는 backend `IngestPipeline` KDoc 하나다.
 - **인증이 가장 앞이다.** 401은 405·415보다 먼저 난다 — 통과한 요청만 수집 단계에 닿아야
   거부될 데이터가 외부 저장소에 적재되지 않는다([ADR 0005](../adr/0005-single-app-telemetry-topology.md)).
+
+## 사용자 인증과 OTLP 경계 (PROJ-108)
+
+[허브 ADR 0008](../adr/0008-manifest-resync-and-installation-credentials.md)에 따라 OTLP는
+installation 귀속 ptt_를 유지한다. PROJ-102 검증·설치 폐기·데몬 401/403 재발급·503 재시도는 그대로다.
+사용자 AT/RT는 사용자 API에서만 쓰고 OTLP에 manifest revision 검사를 추가하지 않는다.
+재동기화의 서버 원자성은 로컬 정책 적용이나 OTLP 최신 정책 집행을 보장하지 않는다.

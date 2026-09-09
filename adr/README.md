@@ -34,8 +34,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted |
 | 0006 | [OTLP ingest 는 영구 실패를 4xx 로, 일시 실패를 503 으로 돌려주고 배치 큐를 두지 않는다](0006-otlp-ingest-retry-and-status-contract.md) | Accepted |
 | 0007 | [사용자 로그인과 초대 소비](0007-user-authentication-and-invitation-consumption.md) | Accepted — 계약 리뷰 대기 |
+| 0008 | [manifest 재동기화와 설치 인증 유지](0008-manifest-resync-and-installation-credentials.md) | Accepted — 계약 리뷰 대기 |
 
-새 ADR은 `0008`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0009`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
@@ -69,7 +70,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
 | `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 17 (0001–0017) | **한국어 슬러그.** 새 ADR은 `0018`부터 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
-| `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0008`부터 |
+| `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0009`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
 | `docs` (이 레포) | `adr/` | 위 표 | 6 | 크로스레포·제품 결정만. **영어 슬러그** |
 

@@ -184,3 +184,10 @@ PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrol
 ## 사용자 인증 계약 추가 (PROJ-107)
 
 가입·로그인 JSON API와 CLI 코드 교환은 [사용자 인증 계약](user-auth.md)을 따른다. 기존 설치 봉투는 유지한다. 상태: 변경 중.
+
+## manifest 재동기화 추가 (PROJ-108, 변경 중)
+
+사용자 RT 기반 GET /v1/manifest는 [사용자 인증 계약](user-auth.md)의 별도 5키 봉투를 사용한다.
+설치 enroll 4키와 중첩 manifest 스키마는 변경하지 않는다. GET 상태 변경·캐시 금지·응답 유실 정책도 그 계약을 따른다.
+
+초대 폐기는 가입/설치 중 미소비 권한이 남은 경우 허용한다. 양쪽 완료만 invitation_used로 거부한다. 기존 설치·계정은 유지한다.

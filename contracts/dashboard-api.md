@@ -47,3 +47,8 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 ## 사용자 인증 계약 추가 (PROJ-107)
 
 가입·로그인 JSON API와 CLI 코드 교환은 [사용자 인증 계약](user-auth.md)을 따른다. 기존 설치 봉투는 유지한다. 상태: 변경 중.
+
+## revision 검증 연결 (PROJ-108)
+
+사용자 인증 라이브러리에 verifyCurrentRevision을 제공한다. 실제 관리자 경로 연결은 PROJ-109다.
+manifest_revision_mismatch는 409이며 RT 기반 재동기화로 복구한다. 인증 API 자체는 role에 따라 로그인 자격을 나누지 않는다.
