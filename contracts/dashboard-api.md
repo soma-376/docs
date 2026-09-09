@@ -43,3 +43,7 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 
 MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. frontend 착수 시 증류해
 [`../product/`](../product/prd.md)로 옮긴다.
+
+## 사용자 인증 계약 추가 (PROJ-107)
+
+가입·로그인 JSON API와 CLI 코드 교환은 [사용자 인증 계약](user-auth.md)을 따른다. 기존 설치 봉투는 유지한다. 상태: 변경 중.

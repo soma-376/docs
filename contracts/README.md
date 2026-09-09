@@ -40,3 +40,5 @@ telemetry ingest의 당사자는 구현·관리 책임 기준이다. AI tool은 
 2. 결정의 이유가 새로 생겼으면 크로스레포 ADR을 함께 쓴다([`../adr/README.md`](../adr/README.md)의 스코프 규칙).
 3. 합의 후 각 레포의 구현 PR을 연다. 구현 PR은 이 계약 문서를 링크한다.
 4. 양쪽이 머지될 때까지 계약 문서의 상태 표기를 "변경 중"으로 둔다.
+
+- [사용자 인증](user-auth.md): backend ↔ telemetryctl·frontend, PROJ-107 변경 중.
