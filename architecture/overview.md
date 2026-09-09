@@ -78,6 +78,7 @@ flowchart LR
   ADP --> ENR
   ENR --> SIGDB
   USERDB -. "조직별 마스킹 규칙" .-> MASK
+  USERDB -. "팀 소속 as-of 조회" .-> ENR
   RAW -. "재처리" .-> ADP
   PRICE -. "공시 단가" .-> ADP
   SCEN -. "시나리오 정의" .-> DASH
@@ -130,7 +131,7 @@ flowchart LR
 조직이 실제로 부담하는 금액은 계약에 종속되므로 조회 시 계산한다 — **계약이 바뀌어도 재적재가 필요 없다.**
 공시 단가 자체가 바뀌면 재처리로 소급 정정한다. 그래서 금액과 함께 **단가 버전**을 저장한다.
 
-파이프라인에서 조직별 데이터를 읽는 것은 **Masker뿐**이다. 집계·비용 전용 저장소는 없다.
+파이프라인에서 **조직별 마스킹 정책은 Masker**가 읽고, **팀 소속은 Enricher의 org provider**가 읽는다. 집계·비용 전용 저장소는 없다.
 
 ---
 
@@ -238,7 +239,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 
 | 저장소 | 담는 것 | 쓰는 주체 | 읽는 주체 |
 |---|---|---|---|
-| **User Database** | 조직 · 팀 · 사용자 · 권한 · 정책 · 조직별 계약 단가 | Auth Service(계정·토큰), Dashboard API(조직 설정) | Auth Service, Dashboard API, Masker(정책) |
+| **User Database** | 조직 · 팀 · 사용자 · 권한 · 정책 · 조직별 계약 단가 | Auth Service(계정·토큰), Dashboard API(조직 설정) | Auth Service, Dashboard API, Masker(정책), Enricher(팀 소속) |
 | **Raw Signal Object Storage** | 마스킹 완료 시그널 + 재처리용 메타데이터 | Masker | 재처리 배치 (트리거 2종) |
 | **Signal Database (ClickHouse)** | 정규화·보강된 조회용 시그널 + 시간 단위 집계 + 공시 기준 금액 | Enricher | Dashboard API |
 
@@ -246,7 +247,9 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
   대시보드에 원본 조회 화면·API가 없는 이유다.
 - **Signal Database에 쓰는 주체는 Enricher 하나뿐**이다. 다른 컴포넌트가 직접 쓰기 시작하면 데이터 일관성이 즉시 깨진다.
   backend는 이 노드를 결합과 적재 두 모듈로 나눠 구현하며 쓰기는 적재 모듈 하나만 한다 — 주체가 하나라는 제약은 그대로다.
-- User Database에 쓰는 주체는 둘이고 다루는 영역이 겹치지 않는다. 파이프라인에서 이 저장소를 보는 것은 **Masker뿐**이다.
+- User Database의 서비스 수준 쓰기 주체는 Auth Service와 Dashboard API이며 다루는 영역이 겹치지 않는다. 파이프라인에서는 Masker가 마스킹 정책을, Enricher의 org provider가 팀 소속을 읽는다.
+  개발 시드는 Auth Service 구현인 enrollment-api 내부의 `LocalSeeder`가 `local` 프로파일에서 쓴다.
+  별도의 서비스 주체는 아니다([data-model 계약 §1](../contracts/data-model.md)).
 - 어떤 저장소에도 자격증명 원문을 쓰지 않는다(I-11).
 
 공유 도메인 모델(tenant / team / member)의 정의는 [`../contracts/data-model.md`](../contracts/data-model.md)에 있다.
