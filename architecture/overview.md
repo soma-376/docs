@@ -247,7 +247,9 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
   대시보드에 원본 조회 화면·API가 없는 이유다.
 - **Signal Database에 쓰는 주체는 Enricher 하나뿐**이다. 다른 컴포넌트가 직접 쓰기 시작하면 데이터 일관성이 즉시 깨진다.
   backend는 이 노드를 결합과 적재 두 모듈로 나눠 구현하며 쓰기는 적재 모듈 하나만 한다 — 주체가 하나라는 제약은 그대로다.
-- User Database에 쓰는 주체는 둘이고 다루는 영역이 겹치지 않는다. 파이프라인에서는 Masker가 마스킹 정책을, Enricher의 org provider가 팀 소속을 읽는다.
+- User Database의 서비스 수준 쓰기 주체는 Auth Service와 Dashboard API이며 다루는 영역이 겹치지 않는다. 파이프라인에서는 Masker가 마스킹 정책을, Enricher의 org provider가 팀 소속을 읽는다.
+  개발 시드는 Auth Service 구현인 enrollment-api 내부의 `LocalSeeder`가 `local` 프로파일에서 쓴다.
+  별도의 서비스 주체는 아니다([data-model 계약 §1](../contracts/data-model.md)).
 - 어떤 저장소에도 자격증명 원문을 쓰지 않는다(I-11).
 
 공유 도메인 모델(tenant / team / member)의 정의는 [`../contracts/data-model.md`](../contracts/data-model.md)에 있다.
