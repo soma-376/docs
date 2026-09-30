@@ -35,8 +35,10 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0006 | [OTLP ingest 는 영구 실패를 4xx 로, 일시 실패를 503 으로 돌려주고 배치 큐를 두지 않는다](0006-otlp-ingest-retry-and-status-contract.md) | Accepted |
 | 0007 | [사용자 로그인과 초대 소비](0007-user-authentication-and-invitation-consumption.md) | Accepted — 계약 리뷰 대기 |
 | 0008 | [manifest 재동기화와 설치 인증 유지](0008-manifest-resync-and-installation-credentials.md) | Accepted — 계약 리뷰 대기 |
+| 0010 | [설치는 heartbeat 한 경로로 생존·수집 상태·적용한 정책 판을 보고한다](0010-installation-heartbeat-and-policy-acknowledgement.md) | Proposed |
+| 0011 | [데몬 업데이트 확인의 최신 버전은 서버가 배포하는 바이너리의 판이고 비교는 서버가 한다](0011-daemon-update-check-uses-served-binary-version.md) | Proposed |
 
-새 ADR은 `0009`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0012`부터. `0009`는 다른 브랜치가 쓰고 있어 비워 둔다. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
@@ -53,6 +55,8 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 - OTLP ingest 의 재시도·백프레셔 정책과 503 계약 → [ADR 0006](0006-otlp-ingest-retry-and-status-contract.md)
   (ADR 0005 Follow-up 이 열어 둔 항목)
 - manifest 배정 단위 → [ADR 0002](0002-manifest-assignment-unit-is-tenant.md)
+- 설치의 생존·정책 적용 보고([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §6 M10) → [ADR 0010](0010-installation-heartbeat-and-policy-acknowledgement.md)
+- 데몬 업데이트 확인의 최신 버전 기준 → [ADR 0011](0011-daemon-update-check-uses-served-binary-version.md)
 - enrollment 스키마의 부트스트랩 주체 → 결정 완료(backend Flyway — backend ADR-0009,
   [`../contracts/data-model.md`](../contracts/data-model.md) §5). 남은 것은 ECS 실행 자리(infra 새 ADR 예정)
 
@@ -72,7 +76,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0009`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 6 | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 10 (0001–0008, 0010–0011) | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
