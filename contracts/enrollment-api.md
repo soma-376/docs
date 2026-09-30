@@ -117,11 +117,16 @@ prod의 공유 방식은 enrollment 서버 배치와 함께 미결이다(infra `
 토큰과 초대 코드의 원본은 DB에 저장하지 않고 **로그·에러 응답에도 담지 않는다** —
 파싱 실패 메시지에는 요청 본문 조각이 섞여 있어 그대로 흘리면 코드가 새어 나간다.
 
-### 초대 코드 pepper — 해소됨(PROJ-79)
+### 초대 코드 pepper — 해소됨(PROJ-79) · 시드 일원화됨(PROJ-105)
 
 `ai-telemetry-pipeline`의 `sql/rds/seed.sql`이 `HMAC-SHA256('dev-only-invite-pepper', code)`를 전제해
 backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이고 진실원은 backend다** — 시드를 backend
 방식(무염 SHA-256)으로 맞췄다(pipeline `6543e6d`).
+
+PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrollment-api`의 `LocalSeeder`
+(`local` 프로파일)가 tenant·member·팀·소속·manifest·초대를 넣는다. 시드가 두 벌이면 어느 쪽이
+사실인지가 실행 순서로 정해지고, SQL 시드는 backend Flyway보다 먼저 돌아 스키마가 없는 시점에
+적용된다. 해시 방식이 갈릴 여지도 함께 사라졌다 — 시더가 서버와 같은 `Sha256.hex`를 부른다.
 
 ## 5. Manifest
 
@@ -166,7 +171,7 @@ backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이�
 
 | # | 항목 | 영향 |
 |---|---|---|
-| M1 | **좁혀짐(PROJ-79)** — backend `LocalSeeder`의 endpoint가 설정값(`pulsemetry.local-seed.otlp-endpoint`, 기본 `:4316` 정상 경로)으로 분리돼(backend `0255b54`) 두 시드가 정렬됐다. 남은 것은 로컬 compose가 두 시드에 **한 값을 주입**하는 배선(파이프라인 `seed.sql`의 주입형 전환 포함)이다 | (기존 위험이던 `:4318` 하드코딩 — auth-proxy 우회·자기참조 — 은 제거됨) |
+| ~~M1~~ | **해소됨(PROJ-105)** — 시드가 backend `LocalSeeder` 한 벌로 모였다. 주입할 두 번째 시드가 없으므로 값을 맞출 배선도 필요 없다. endpoint 기본값 `:4316`은 이제 `:apps:telemetry-ingest`가 로컬에서 듣는 포트이며, 구 auth-proxy의 자리를 물려받은 것이라 데몬 설정을 바꾸지 않는다 | (기존 위험이던 `:4318` 하드코딩 — auth-proxy 우회·자기참조 — 은 제거됨) |
 | M7 | **계약 진화 취약** — 클라이언트 `DisallowUnknownFields` + 서버 `FAIL_ON_UNKNOWN_PROPERTIES`. 응답 필드 하나만 추가해도 배포된 전 클라이언트가 파괴된다 | 버저닝 또는 tolerant reader 정책이 필요하다. **현재는 필드 추가가 breaking change다** |
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 강등 상태에서는 포워더 `Scrub`이 경로 밖이라 **manifest `privacy` 집행에 공백이 생긴다**(같은 문서 §5 M13). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
@@ -175,3 +180,14 @@ backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이�
 | — | `POST /v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
 | — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과). **기존 저장 manifest 주의** — `required` 추가라 이 필드가 없는 기존 v1 manifest는 서버 검증에서 409 `manifest_not_configured`가 된다. 테넌트 온보딩 전 수동 INSERT 점검이 필요하다 | — |
+
+## 사용자 인증 계약 추가 (PROJ-107)
+
+가입·로그인 JSON API와 CLI 코드 교환은 [사용자 인증 계약](user-auth.md)을 따른다. 기존 설치 봉투는 유지한다. 상태: 변경 중.
+
+## manifest 재동기화 추가 (PROJ-108, 변경 중)
+
+사용자 RT 기반 GET /v1/manifest는 [사용자 인증 계약](user-auth.md)의 별도 5키 봉투를 사용한다.
+설치 enroll 4키와 중첩 manifest 스키마는 변경하지 않는다. GET 상태 변경·캐시 금지·응답 유실 정책도 그 계약을 따른다.
+
+초대 폐기는 가입/설치 중 미소비 권한이 남은 경우 허용한다. 양쪽 완료만 invitation_used로 거부한다. 기존 설치·계정은 유지한다.
