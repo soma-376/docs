@@ -16,7 +16,7 @@
 |---|---|---|
 | **DDL 진실원** | `pulsemetry-backend` | `libs/enrollment-persistence`의 **Flyway 마이그레이션**. 운영 DB를 바꾸는 유일한 경로 |
 | 설계도 | `rdb-schema` | `dbdiagram.dbml`. 팀이 함께 보는 다이어그램이며 **마이그레이션 도구가 아니다** |
-| dev 부트스트랩 | `pulsemetry-backend` | `apps/enrollment-api`의 **`LocalSeeder`**(`local` 프로파일). 스키마는 Flyway가, 시드 데이터는 이 시더가 넣는다. **편의용이며 진실원이 아니다** |
+| dev 부트스트랩 | `pulsemetry-backend` | **`tools/dev-seed`(Docker 전용 — backend ADR 0031)**. 스키마는 각 모듈의 마이그레이션이, 시드 데이터는 이 도구가 넣는다. 서버는 시드 모듈을 의존하지 않는다. **편의용이며 진실원이 아니다** |
 | 현재 배포 소비자 | `ai-telemetry-pipeline` | auth-proxy(`DATABASE_URL`), telemetry-processor(`ENRICHMENT_PG_DSN`) — **읽기만** 한다 |
 | 목표 배포 소비자 | `pulsemetry-backend/:apps:telemetry-ingest` | `:libs:security`가 토큰 인증을, `:libs:telemetry-enricher`의 org provider가 팀 소속 조회를 맡는다. 읽기 전용이며, 이 앱은 Flyway를 실행하지 않는다(backend ADR 0016) |
 

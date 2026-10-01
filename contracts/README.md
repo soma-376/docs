@@ -21,7 +21,8 @@ E2E 검증에서 확인된 차단 결함 4건 중 3건이 "구간 내부의 버�
 | [`daemon-updates.md`](daemon-updates.md) | `telemetryctl`(데몬·릴리스 산출물) ↔ `pulsemetry-backend` | 변경 중 |
 | [`telemetry-ingest.md`](telemetry-ingest.md) | `telemetryctl` → 현재 `ai-telemetry-pipeline`, 목표 `pulsemetry-backend` (배포: `infra`) | 현재 배포 경로 B3 미해결; 목표 경로 상태·재시도는 §8 |
 | [`data-model.md`](data-model.md) | `pulsemetry-backend`(DDL) ↔ 현재 `ai-telemetry-pipeline`, 목표 backend ingest 모듈(읽기); 설계도 `rdb-schema` | 확정 — 소비자 전환은 배포와 함께 |
-| [`dashboard-api.md`](dashboard-api.md) | frontend(예정) ↔ backend | **골격** |
+| [`dashboard-api.md`](dashboard-api.md) | `pulsemetry-frontend` ↔ `pulsemetry-backend` | 변경 중 — 조회·관리 명령 구현, 소재 ADR 리뷰 대기 |
+| [`user-auth.md`](user-auth.md) | `pulsemetry-backend` ↔ `telemetryctl`·`pulsemetry-frontend` | 변경 중 |
 
 ## 규칙
 
@@ -42,4 +43,3 @@ telemetry ingest의 당사자는 구현·관리 책임 기준이다. AI tool은 
 3. 합의 후 각 레포의 구현 PR을 연다. 구현 PR은 이 계약 문서를 링크한다.
 4. 양쪽이 머지될 때까지 계약 문서의 상태 표기를 "변경 중"으로 둔다.
 
-- [사용자 인증](user-auth.md): backend ↔ telemetryctl·frontend, PROJ-107 변경 중.

@@ -28,14 +28,13 @@ RT는 urt_ 접두사와 32바이트 base64url 난수다. CLI code는 uac_ 접두
 JWT 실패는 invalid_credentials로 통일한다. DB 장애나 서명 실패를 인증 실패로 숨기지 않는다.
 
 ## 현재 상태
-제품 웹 화면·CLI 로그인·키링 저장은 미구현이다. 서버와 모의 CLI E2E만 이 티켓의 대상이다.
-관리자 role 인가 전환은 PROJ-109이며 owner/admin 대시보드 제한은 그 티켓이 담당한다.
+- 웹: 대시보드 관리 요청은 Bearer AT 로 owner·admin 만 받는다(backend ADR 0026). 웹 로그인 화면은 개발용 시드 로그인 어댑터만 있고 회사 IdP 로그인(OIDC)은 없다.
+- CLI: `telemetryctl` 이 사용자 로그인·키링 저장·RT 로 manifest 재조회·적용을 한다(설치 보고의 응답이 새 판을 알릴 때 — [enrollment API 계약](enrollment-api.md) §7).
 
 ## 검증·게시 순서
 
-backend CI는 telemetryctl 계약 커밋 b190344d24a7d3e6f22241a0e2f0ef06390d72cf를 고정한다.
-해당 커밋이 현재 로컬에만 있으므로 계약 브랜치를 먼저 게시해야 원격 CI가 이를 읽을 수 있다.
-실제 클라이언트 변경은 이 스키마를 구현하는 후속 티켓으로 분리한다.
+backend CI 는 telemetryctl 기본 브랜치의 `contracts/` 를 체크아웃해 읽는다(커밋을 고정하지 않는다).
+그래서 계약 스키마를 바꾸는 telemetryctl 변경이 기본 브랜치에 먼저 들어가야 backend 가 그 스키마로 검증한다.
 
 ## manifest 재동기화 (PROJ-108, 변경 중)
 
@@ -52,8 +51,8 @@ GET이 상태를 변경한다. Cache-Control: no-store와 Pragma: no-cache를 �
 같은 RT로 동시 refresh/resync하면 재사용 탐지가 세션 전체를 폐기한다.
 
 클라이언트에 실제로 정책이 적용됐는지는 증명하지 않는다. 서버 원자성은 로컬 키링/설정 쓰기와 별개다.
-일반 refresh는 기존 revision을 유지한다. 관리자 경로의 낡은 AT는 PROJ-109가 검증 코어를 연결한 뒤
-409 manifest_revision_mismatch로 재동기화를 요청한다. OTLP ptt_ 경로에는 적용하지 않는다.
+일반 refresh는 기존 revision을 유지한다. 낡은 revision 의 AT 를 409 manifest_revision_mismatch 로 거절하는 검증은
+backend 에 있지만 아직 어느 경로에도 연결하지 않았다. OTLP ptt_ 경로에는 적용하지 않는다.
 
 재동기화 서버는 build에서 원본 manifest JSON Schema를 jar에 포함하여 원문을 검증한다. DTO 기본값으로 필수 정책 누락을 보충하지 않는다.
 

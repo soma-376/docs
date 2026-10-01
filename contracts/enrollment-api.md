@@ -81,7 +81,7 @@ WHERE code_hash = :codeHash AND used_at IS NULL AND revoked_at IS NULL AND expir
 
 | 토큰 | 접두사 | 저장 위치 | 용도 | 교체 |
 |---|---|---|---|---|
-| `installation_token` | `pit_` | OS 키링 | 이 설치의 장기 신원 | 하지 않는다 |
+| `installation_token` | `pit_` | OS 키링 | 이 설치의 장기 신원 — `ptt_` 재발급 요청과 설치 보고(§7)의 인증 | 하지 않는다 |
 | `telemetry_token` | `ptt_` | OS 키링 (데몬이 상위 전송 시 `Authorization`에 주입) | 텔레메트리 전송 | 언제든 재발급 |
 
 형식은 둘 다 `접두사 + base64url(32 랜덤 바이트, 패딩 없음)`.
@@ -125,10 +125,10 @@ prod의 공유 방식은 enrollment 서버 배치와 함께 미결이다(infra `
 backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이고 진실원은 backend다** — 시드를 backend
 방식(무염 SHA-256)으로 맞췄다(pipeline `6543e6d`).
 
-PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrollment-api`의 `LocalSeeder`
-(`local` 프로파일)가 tenant·member·팀·소속·manifest·초대를 넣는다. 시드가 두 벌이면 어느 쪽이
-사실인지가 실행 순서로 정해지고, SQL 시드는 backend Flyway보다 먼저 돌아 스키마가 없는 시점에
-적용된다. 해시 방식이 갈릴 여지도 함께 사라졌다 — 시더가 서버와 같은 `Sha256.hex`를 부른다.
+PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 지금은 backend `tools/dev-seed`(Docker 전용 — backend ADR 0031)가
+tenant·member·팀·소속·manifest·초대를 넣는다. 시드가 두 벌이면 어느 쪽이 사실인지가 실행 순서로 정해지고,
+SQL 시드는 backend Flyway보다 먼저 돌아 스키마가 없는 시점에 적용된다. 해시 방식이 갈릴 여지도 함께 사라졌다 —
+시드 도구가 서버와 같은 무염 SHA-256을 쓴다.
 
 ## 5. Manifest
 
@@ -173,7 +173,7 @@ PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrol
 
 | # | 항목 | 영향 |
 |---|---|---|
-| ~~M1~~ | **해소됨(PROJ-105)** — 시드가 backend `LocalSeeder` 한 벌로 모였다. 주입할 두 번째 시드가 없으므로 값을 맞출 배선도 필요 없다. endpoint 기본값 `:4316`은 이제 `:apps:telemetry-ingest`가 로컬에서 듣는 포트이며, 구 auth-proxy의 자리를 물려받은 것이라 데몬 설정을 바꾸지 않는다 | (기존 위험이던 `:4318` 하드코딩 — auth-proxy 우회·자기참조 — 은 제거됨) |
+| ~~M1~~ | **해소됨(PROJ-105)** — 시드가 backend 시드 도구(`tools/dev-seed`) 한 벌로 모였다. 주입할 두 번째 시드가 없으므로 값을 맞출 배선도 필요 없다. endpoint 기본값 `:4316`은 이제 `:apps:telemetry-ingest`가 로컬에서 듣는 포트이며, 구 auth-proxy의 자리를 물려받은 것이라 데몬 설정을 바꾸지 않는다 | (기존 위험이던 `:4318` 하드코딩 — auth-proxy 우회·자기참조 — 은 제거됨) |
 | M7 | **계약 진화 취약** — 클라이언트 `DisallowUnknownFields` + 서버 `FAIL_ON_UNKNOWN_PROPERTIES`. 응답 필드 하나만 추가해도 배포된 전 클라이언트가 파괴된다 | 버저닝 또는 tolerant reader 정책이 필요하다. **현재는 필드 추가가 breaking change다** |
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 강등 상태에서는 포워더 `Scrub`이 경로 밖이라 **manifest `privacy` 집행에 공백이 생긴다**(같은 문서 §5 M13). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
