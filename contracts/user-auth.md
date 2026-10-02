@@ -26,6 +26,12 @@ RT는 urt_ 접두사와 32바이트 base64url 난수다. CLI code는 uac_ 접두
 400 invalid_request, 401 invalid_credentials, 409 signup_unavailable 또는 manifest_not_configured,
 429 rate_limited + Retry-After, 503 auth_unavailable + Retry-After.
 JWT 실패는 invalid_credentials로 통일한다. DB 장애나 서명 실패를 인증 실패로 숨기지 않는다.
+오류 응답은 `application/json;charset=UTF-8`이다.
+
+요청 제한은 둘이다(backend ADR 0052). 토큰 없는 진입(signup·login·cli/authorize·cli/token)은 접속 주소 단위,
+자격을 가진 요청(refresh·logout·현재 사용자 조회·manifest 재동기화)은 세션 단위로 센다. 토큰이 없거나 형식이 틀렸거나
+모르는 토큰은 진입으로 센다. 자격을 가진 요청의 429는 RT를 소비하기 전에 나므로, Retry-After 뒤에 같은 RT로 다시 요청한다.
+브라우저는 CORS 응답의 Retry-After를 읽을 수 있다.
 
 ## 현재 상태
 - 웹: 대시보드 관리 요청은 Bearer AT 로 owner·admin 만 받는다(backend ADR 0026). 웹 로그인 화면은 개발용 시드 로그인 어댑터만 있고 회사 IdP 로그인(OIDC)은 없다.
@@ -46,6 +52,8 @@ JWT 클레임은 backend 명세 §11의 클레임 표를 따른다.
 세션 잠금, 구성원/조직 검사, 활성 manifest 읽기·검증, RT 소비, 세션 revision 변경과 새 AT/RT 저장이
 한 서버 트랜잭션이다. 응답 manifest.config_revision과 JWT.manifest_revision은 같은 DB version이다.
 manifest 부재/계약 위반은 409 manifest_not_configured다. 실패 시 소비 전 RT를 재사용할 수 있다.
+세션 단위 요청 제한을 넘으면 429 rate_limited + Retry-After이고 RT는 소비되지 않는다. 이 재조회를 부르는 클라이언트는
+telemetryctl 기본 브랜치에 아직 없다(위 현재 상태).
 
 GET이 상태를 변경한다. Cache-Control: no-store와 Pragma: no-cache를 사용하고 304를 반환하지 않는다.
 프리페치·자동 재시도·캐시를 금지한다. 커밋 후 응답이 유실되면 재로그인한다.
