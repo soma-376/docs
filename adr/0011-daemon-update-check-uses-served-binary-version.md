@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — `telemetryctl` 담당자가 릴리스 메타데이터 형식과 버전 규칙을 리뷰하면 Accepted.
+Proposed — `telemetryctl` 담당자가 릴리스 산출물을 판의 근거로 쓰는 방식과 버전 규칙을 리뷰하면 Accepted.
 
 ## Context
 
@@ -16,17 +16,20 @@ Proposed — `telemetryctl` 담당자가 릴리스 메타데이터 형식과 버
 
 이미 정해진 사실은 다음과 같다.
 
-- 데몬 바이너리는 서버가 자기 디렉터리에서 서빙한다. 파일명은 여섯 개로 고정이다([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §1).
+- 데몬 바이너리는 서버가 자기 디렉터리에서 서빙한다. 서빙 이름은 여섯 개로 고정이다([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §1).
 - 버전은 빌드 때 주입한다. `v` 없는 `X.Y.Z` 또는 `X.Y.Z-rc.1` 형태이고, 주입하지 않은 빌드는 `0.1.0`이다(`telemetryctl`의 `Taskfile.yml`·릴리스 워크플로).
 - 바이너리 파일만으로는 서버가 그 버전을 알 수 없다. 버전은 실행해야 나온다.
+- 릴리스는 태그 `v<버전>`의 GitHub Release다. 데몬 자산 `pulsemetry_cli_{os}_{arch}`(Windows만 `.exe`) 여섯과 GUI 패키지 여섯,
+  그 모두의 해시를 담은 `SHA256SUMS`를 낸다(`telemetryctl`의 `scripts/release.mjs`·`.github/workflows/release.yml`). 버전만 적은 별도 파일은 내지 않는다.
 
 정하지 않으면 생기는 일: 서버와 릴리스가 서로 다른 "최신"을 가진다. 서버가 자기가 주지도 못하는 버전을 최신이라고 답할 수 있다.
 
 ## Decision
 
 - **최신 버전은 그 서버가 `GET /bin/{filename}`으로 배포하는 바이너리의 판이다.** 외부 릴리스 목록을 조회하지 않는다. 서버가 주지 못하는 버전을 최신이라고 답하지 않는다.
-- **판은 릴리스 메타데이터 파일이 말한다.** 바이너리를 만드는 쪽이 바이너리 옆에 `pulsemetry_release.json`을 둔다. 버전 하나와 파일별 SHA-256을 담는다.
-  서버는 그 플랫폼의 바이너리가 있고 해시가 메타데이터와 같을 때만 그 버전을 답한다.
+- **판은 릴리스 산출물 그대로가 말한다.** 운영자는 한 릴리스의 자산과 `SHA256SUMS`를 그 태그 이름의 디렉터리(`v<버전>`)에 받아 둔다.
+  버전은 디렉터리 이름(태그)이고 해시는 `SHA256SUMS`다. 서버는 그 플랫폼의 자산이 있고 해시가 `SHA256SUMS`와 같을 때만 그 버전을 답하고,
+  같은 확인을 거친 같은 파일을 `/bin/{filename}`의 공개 이름으로 서빙한다. 릴리스 디렉터리가 여럿이면 버전이 가장 높은 것이 그 서버의 릴리스다.
 - **비교는 서버가 한다.** `update_available`은 데몬이 보낸 버전이 배포 판보다 **낮을 때만** true다. 같거나 높으면 false다.
 - **버전은 SemVer 2.0.0이고 `v`를 붙이지 않는다.** 순서는 SemVer의 우선순위 규칙이다 — 사전 릴리스는 같은 번호의 정식 판보다 낮고, 빌드 메타데이터는 순서에 영향을 주지 않는다.
   버전을 주입하지 않은 빌드(`0.1.0`)를 따로 취급하지 않는다.
@@ -61,6 +64,11 @@ Proposed — `telemetryctl` 담당자가 릴리스 메타데이터 형식과 버
 - 단점: 데몬이 "최신 버전"이라고 표시한다. 근거가 없는 표시다.
 - 탈락 이유: 확인하지 못한 것을 최신으로 표시하지 않는다는 데몬의 기존 원칙과 같은 쪽으로 정한다.
 
+### F. 릴리스 옆에 버전·해시 메타데이터 파일을 따로 둔다
+- 장점: 디렉터리 배치를 정하지 않아도 된다. 파일 하나만 읽으면 된다.
+- 단점: 릴리스가 내지 않는 파일이다. 누군가 손으로 만들어야 하고, 릴리스와 따로 움직인다. 같은 해시가 `SHA256SUMS`와 두 곳에 생긴다.
+- 탈락 이유: 릴리스가 이미 버전(태그)과 해시(`SHA256SUMS`)를 낸다. 서버가 그것을 그대로 읽으면 손으로 만드는 산출물이 없다.
+
 ## Consequences/Tradeoffs
 
 ### Positive
@@ -69,18 +77,18 @@ Proposed — `telemetryctl` 담당자가 릴리스 메타데이터 형식과 버
 - 데몬의 현재 파서가 그대로 동작한다.
 
 ### Negative
-- 바이너리를 놓는 쪽이 메타데이터 파일도 함께 놓아야 한다. 빠뜨리면 그 서버의 모든 설치가 "미지원"으로 보인다.
+- 운영자가 릴리스 자산을 태그 이름의 디렉터리에 받아 둬야 한다. 빠뜨리면 그 서버의 모든 설치가 "미지원"으로 보인다.
 - 서버는 해시를 확인해야 한다. 파일이 바뀔 때마다 다시 계산한다.
-- 릴리스 태그 검사는 SemVer보다 느슨하다. SemVer가 아닌 태그로 만든 바이너리는 업데이트 확인의 대상이 되지 못한다.
+- 릴리스 태그 검사는 SemVer보다 느슨하다. SemVer가 아닌 태그의 디렉터리는 서버가 릴리스로 보지 않는다.
 - 서버마다 최신이 다를 수 있다. 바이너리를 늦게 교체한 서버의 설치는 새 릴리스를 늦게 안다.
 - 알려 주기만 한다. 내려받기·설치·서명 검증은 이 결정에 없다.
 
 ## Follow-up
-- backend: 메타데이터 읽기와 해시 확인, 응답 구현.
-- telemetryctl: 빌드·릴리스 산출물에 `pulsemetry_release.json` 추가, 계약 스키마 대조 테스트.
-- 바이너리를 서버에 놓는 배포 절차에 메타데이터 파일 포함.
+- backend: 릴리스 디렉터리 읽기와 `SHA256SUMS` 확인, 공개 이름 서빙, 응답 구현.
+- telemetryctl: 없음 — 릴리스 산출물과 데몬의 업데이트 확인 클라이언트를 그대로 쓴다.
+- 릴리스 자산을 서버의 바이너리 디렉터리로 옮기는 배포 절차(infra).
 
 ## References
 - [`../contracts/daemon-updates.md`](../contracts/daemon-updates.md)
-- `telemetryctl/contracts/daemon-updates.schema.json`
+- `telemetryctl/internal/updatecheck/client.go`, `telemetryctl/scripts/release.mjs`
 - https://semver.org/spec/v2.0.0.html

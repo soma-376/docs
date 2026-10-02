@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 당사자 | **`telemetryctl`** (데몬 `internal/updatecheck`, 빌드·릴리스 산출물) ↔ **`pulsemetry-backend`** (`apps/enrollment-api`) |
-| 기계 판독 원본 | `telemetryctl/contracts/daemon-updates.schema.json` (`check_updates_response`, `release_metadata`) |
+| 기계 판독 원본 | 없다. 응답은 이 문서 §2와 `telemetryctl` `internal/updatecheck/client.go`가 읽는 것이고, 릴리스 산출물은 `scripts/release.mjs`가 만드는 것이다 |
 | 관련 ADR | 허브 [ADR 0011](../adr/0011-daemon-update-check-uses-served-binary-version.md) |
 | 상태 | 변경 중 (PROJ-187) |
 
@@ -59,37 +59,36 @@
 최신 버전은 그 서버가 `GET /bin/{filename}`([`enrollment-api.md`](enrollment-api.md) §1)으로 배포하는 바이너리의 버전이다.
 서버는 외부 릴리스 목록을 보지 않는다.
 
-버전은 **릴리스 메타데이터 파일**이 말한다. 바이너리를 만드는 쪽이 여섯 바이너리와 같은 디렉터리에 `pulsemetry_release.json`을 둔다.
+버전과 해시는 **`telemetryctl` 릴리스 산출물 그대로**가 말한다. 릴리스는 태그 `v<버전>`의 GitHub Release이고,
+데몬 자산 `pulsemetry_cli_{platform}_{architecture}`(Windows만 `.exe`) 여섯과 GUI 패키지, `SHA256SUMS`를 담는다.
+운영자는 한 릴리스의 자산을 그 **태그 이름의 디렉터리**에 그대로 받아 둔다.
 
-```json
-{
-  "version": "0.2.0",
-  "sha256": {
-    "pulsemetry_darwin_amd64": "<소문자 hex 64자>",
-    "pulsemetry_darwin_arm64": "<소문자 hex 64자>",
-    "pulsemetry_linux_amd64": "<소문자 hex 64자>",
-    "pulsemetry_linux_arm64": "<소문자 hex 64자>",
-    "pulsemetry_windows_amd64.exe": "<소문자 hex 64자>",
-    "pulsemetry_windows_arm64.exe": "<소문자 hex 64자>"
-  }
-}
+```text
+<바이너리 디렉터리>/v0.2.0/
+  SHA256SUMS
+  pulsemetry_cli_darwin_amd64        pulsemetry_cli_darwin_arm64
+  pulsemetry_cli_linux_amd64         pulsemetry_cli_linux_arm64
+  pulsemetry_cli_windows_amd64.exe   pulsemetry_cli_windows_arm64.exe
 ```
 
-- `version`은 그 바이너리들에 주입한 버전과 같다(§4의 형식).
-- `sha256`의 키는 바이너리 파일명이다. 만들지 않은 대상은 키를 뺀다. 여섯 이름 밖의 키는 쓰지 않는다.
-- 이 파일은 `/bin/{filename}`으로 서빙하지 않는다.
-- 서버는 모르는 키를 무시한다.
+- 디렉터리 이름은 `v` 뒤에 §4 형식의 버전이다. 이 형식이 아닌 디렉터리는 릴리스로 보지 않는다.
+- 릴리스 디렉터리가 여럿이면 버전이 가장 높은 하나가 그 서버의 릴리스다. 낮은 판으로 되돌리려면 높은 판의 디렉터리를 치운다.
+- `SHA256SUMS`는 릴리스가 낸 그대로다 — 한 줄에 `<소문자 hex 64자>`, 공백 둘, 자산 이름. 데몬 자산이 아닌 줄(GUI 패키지)은 무시한다.
+  형식이 틀린 줄이 하나라도 있으면 그 릴리스를 읽지 않는다.
+- 데몬 자산은 공개 이름 `pulsemetry_{platform}_{architecture}`로 서빙된다. 그 대응은 서버가 하고 파일 이름을 바꿔 놓지 않는다.
+- `SHA256SUMS`와 GUI 패키지는 `/bin/{filename}`으로 서빙하지 않는다.
 
-서버는 요청의 `platform`·`architecture`로 파일명(`pulsemetry_{platform}_{architecture}`, Windows만 `.exe`)을 정하고,
-**그 파일이 있고 SHA-256이 메타데이터와 같을 때만** `version`을 `latest_version`으로 답한다.
+서버는 요청의 `platform`·`architecture`로 자산(`pulsemetry_cli_{platform}_{architecture}`, Windows만 `.exe`)을 정하고,
+**그 파일이 있고 SHA-256이 `SHA256SUMS`의 값과 같을 때만** 그 릴리스의 버전을 `latest_version`으로 답한다.
+`/bin/{filename}`도 같은 확인을 거친 같은 파일만 서빙한다 — 답한 버전과 내려주는 파일이 어긋나지 않는다.
 
 다음은 모두 **404**다. 서버가 주지 못하는 버전을 최신이라고 답하지 않는다.
 
-- 업데이트 확인이 꺼져 있다.
-- 메타데이터 파일이 없거나 형식이 틀렸다.
-- `platform`·`architecture`가 여섯 파일명 중 하나로 이어지지 않는다(§1의 값이 아니다).
-- 그 대상의 바이너리가 없거나 메타데이터에 그 파일명이 없다.
-- 바이너리의 해시가 메타데이터와 다르다.
+- 릴리스 디렉터리가 없다.
+- 그 릴리스의 `SHA256SUMS`가 없거나 형식이 틀렸다.
+- `platform`·`architecture`가 여섯 대상 중 하나로 이어지지 않는다(§1의 값이 아니다).
+- 그 대상의 자산이 없거나 `SHA256SUMS`에 그 자산이 없다.
+- 자산의 해시가 `SHA256SUMS`와 다르다.
 
 ## 4. 버전 표기와 비교
 
@@ -113,7 +112,7 @@
 
 | 항목 | 영향 |
 |---|---|
-| 릴리스 워크플로가 `pulsemetry_release.json`을 만들지 않는다 | 메타데이터를 따로 만들어 놓기 전까지 서버는 404로 답한다 |
-| 릴리스 태그 검사(`vX.Y.Z[-…]`)가 SemVer보다 느슨하다 | SemVer가 아닌 태그로 만든 바이너리는 업데이트 확인 대상이 되지 못한다 |
+| 릴리스 태그 검사(`vX.Y.Z[-…]`)가 SemVer보다 느슨하다 | SemVer가 아닌 태그의 릴리스 디렉터리는 서버가 릴리스로 보지 않는다 |
+| 릴리스 자산을 서버 디렉터리로 옮기는 배포 단계가 없다 | 운영자가 받아 두기 전까지 서버는 404로 답한다 |
 | 내려받기·설치·서명 검증이 없다 | 사용자가 직접 다시 설치해야 한다 |
 | 배포 채널(정식·시험판) 구분이 없다 | 서버에 놓인 판이 곧 그 서버의 최신이다 |

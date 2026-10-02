@@ -1,7 +1,7 @@
 # 계약 — 사용자 인증
 
 당사자: backend ↔ telemetryctl·frontend. 상태: 변경 중, PROJ-107 로컬 구현·상대 레포 리뷰 대기.
-기계 판독 원본은 telemetryctl/contracts/user-auth.schema.json이다. 기존 enroll 봉투와 독립이다.
+기계 판독 스키마 파일은 없다 — 봉투는 이 문서가, AT 클레임은 backend 명세 §11의 표가 정한다. 기존 enroll 봉투와 독립이다.
 
 ## API
 - POST /v1/auth/signup: code, email, password → 201 (빈 본문).
@@ -29,7 +29,8 @@ JWT 실패는 invalid_credentials로 통일한다. DB 장애나 서명 실패를
 
 ## 현재 상태
 - 웹: 대시보드 관리 요청은 Bearer AT 로 owner·admin 만 받는다(backend ADR 0026). 웹 로그인 화면은 개발용 시드 로그인 어댑터만 있고 회사 IdP 로그인(OIDC)은 없다.
-- CLI: `telemetryctl` 이 사용자 로그인·키링 저장·RT 로 manifest 재조회·적용을 한다(설치 보고의 응답이 새 판을 알릴 때 — [enrollment API 계약](enrollment-api.md) §7).
+- CLI: `telemetryctl` 기본 브랜치에는 사용자 로그인(`cli/authorize`·`cli/token`), RT 키링 저장, RT 로 하는 manifest 재조회가 없다. 서버 API만 있다.
+  설치된 기기가 새 정책을 받는 방법은 다시 등록하는 것뿐이다([enrollment API 계약](enrollment-api.md) §7 현재 상태).
 
 ## 검증·게시 순서
 
@@ -39,8 +40,8 @@ backend CI 는 telemetryctl 기본 브랜치의 `contracts/` 를 체크아웃해
 ## manifest 재동기화 (PROJ-108, 변경 중)
 
 GET /v1/manifest는 Authorization: Bearer <사용자 RT>로 호출한다. AT·pit_·ptt_는 거부한다.
-응답은 manifest와 사용자 토큰 봉투 4키를 합친 5키다. 원본은 telemetryctl/contracts/manifest-resync.schema.json이다.
-JWT 클레임은 user-auth.schema.json의 access_token_claims를 따른다.
+응답은 manifest와 사용자 토큰 봉투 4키를 합친 5키다. `manifest`는 `telemetryctl/contracts/enrollment-manifest.schema.json`을 만족한다.
+JWT 클레임은 backend 명세 §11의 클레임 표를 따른다.
 
 세션 잠금, 구성원/조직 검사, 활성 manifest 읽기·검증, RT 소비, 세션 revision 변경과 새 AT/RT 저장이
 한 서버 트랜잭션이다. 응답 manifest.config_revision과 JWT.manifest_revision은 같은 DB version이다.

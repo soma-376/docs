@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 당사자 | **`telemetryctl`** (Go 클라이언트) ↔ **`pulsemetry-backend`** (`apps/enrollment-api`) |
-| 기계 판독 원본 | `telemetryctl/contracts/enrollment-manifest.schema.json`, `enrollment-envelope.schema.json`, `installation-heartbeat.schema.json`(§7) |
+| 기계 판독 원본 | `telemetryctl/contracts/enrollment-manifest.schema.json`, `enrollment-envelope.schema.json`. §7(설치 보고)은 이 문서의 표가 원본이다 |
 | 서버 측 상세 | `pulsemetry-backend/docs/enrollment-server-spec.md` |
 | 관련 ADR | backend ADR-0003(계약과 2단 토큰), 0005(부트스트랩·바이너리 서빙), 0007(인증 계층), 0009(스키마 enum) · 허브 [ADR 0010](../adr/0010-installation-heartbeat-and-policy-acknowledgement.md)(설치 보고) |
 | 상태 | 확정 — §7(설치 보고)은 변경 중(PROJ-187) |
@@ -35,8 +35,11 @@
 `pulsemetry_windows_amd64.exe` · `pulsemetry_windows_arm64.exe` · `pulsemetry_darwin_amd64` ·
 `pulsemetry_darwin_arm64` · `pulsemetry_linux_amd64` · `pulsemetry_linux_arm64`
 
-규칙은 `pulsemetry_{os}_{arch}`(Windows만 `.exe`)다. **이 이름으로 산출물을 만드는 릴리스
-파이프라인은 `telemetryctl`에 아직 없다**(backend ADR-0005 Follow-up의 서빙 전제 3건 중 하나).
+규칙은 `pulsemetry_{os}_{arch}`(Windows만 `.exe`)다. 이 이름은 서빙 URL의 이름이다.
+
+`telemetryctl` 릴리스는 데몬을 `pulsemetry_cli_{os}_{arch}`(Windows만 `.exe`)로 내고 `SHA256SUMS`를 함께 낸다.
+backend는 공개 이름을 같은 대상의 릴리스 자산으로 대응해 서빙한다 — 릴리스 디렉터리의 배치와 해시 확인은
+[`daemon-updates.md`](daemon-updates.md) §3이 정한다. 릴리스 이름을 공개 이름으로 바꿔 놓는 별도 단계는 없다.
 
 ## 2. `POST /v1/enroll`
 
@@ -198,7 +201,7 @@ SQL 시드는 backend Flyway보다 먼저 돌아 스키마가 없는 시점에 �
 
 데몬이 주기적으로 자기 상태를 보고한다. 생존, 수집 경로의 상태, **적용한 manifest 판**이 한 요청에 실린다.
 정책 적용 확인(ACK) 전용 경로는 없다 — 적용한 판은 모든 보고에 실리는 상태다(허브 [ADR 0010](../adr/0010-installation-heartbeat-and-policy-acknowledgement.md)).
-기계 판독 원본은 `telemetryctl/contracts/installation-heartbeat.schema.json`(`request`, `response`)이다.
+요청·응답의 필드는 아래 표가 원본이다. 기계 판독 스키마 파일은 아직 없다.
 
 ### 요청
 
@@ -298,3 +301,10 @@ SQL 시드는 backend Flyway보다 먼저 돌아 스키마가 없는 시점에 �
 - 서버가 받은 뒤의 적재 결과.
 
 따라서 보고가 있었다는 사실만으로 그 기간의 수집이 완전하다고 판정하지 않는다. 판정 규칙은 backend가 정한다.
+
+### 현재 상태
+
+- `telemetryctl` 기본 브랜치에는 이 보고의 송신(클라이언트·주기 작업)이 없다. 서버 경로만 있다.
+- 그래서 지금 배포된 데몬의 설치는 보고하지 않는다. 서버는 그 설치의 적용 판을 확인할 수 없고 "확인 불가"로 낸다.
+- 응답이 알려 주는 새 판을 데몬이 받는 재조회([`user-auth.md`](user-auth.md)의 `GET /v1/manifest`)도 데몬 쪽 구현이 없다.
+  이미 설치된 기기가 새 정책을 받는 방법은 다시 등록하는 것뿐이다.

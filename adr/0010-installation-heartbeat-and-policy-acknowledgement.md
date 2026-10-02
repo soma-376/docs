@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — `telemetryctl` 담당자가 보고 항목과 데몬 쪽 동작을 리뷰하면 Accepted.
+Proposed — `telemetryctl` 담당자가 보고 항목과 데몬 쪽 동작을 리뷰하면 Accepted. `telemetryctl` 기본 브랜치에는 보고 송신이 아직 없다 — 서버 경로만 구현됐다.
 
 ## Context
 
@@ -122,4 +122,4 @@ Proposed — `telemetryctl` 담당자가 보고 항목과 데몬 쪽 동작을 �
 
 ## References
 - [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §7
-- `telemetryctl/contracts/installation-heartbeat.schema.json`
+- 기계 판독 스키마 파일은 없다 — [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §7의 표가 원본이다.
