@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 당사자 | **`pulsemetry-backend`**(쓰기·DDL 진실원) ↔ **`ai-telemetry-pipeline`**(읽기 소비자). 설계도는 **`rdb-schema`** |
+| 당사자 | **`pulsemetry-backend`**(쓰기·DDL 진실원) ↔ **현재 `ai-telemetry-pipeline`, 목표 backend `:apps:telemetry-ingest`**(읽기 소비자). 설계도는 **`rdb-schema`** |
 | 물리 위치 | 공유 RDS `controlplane`의 **`enrollment` 스키마** |
 | 관련 ADR | backend ADR-0004(진실원 = Flyway), ADR-0009(native enum) / infra ADR-0012(컨트롤 플레인 DB) |
 | 상태 | 확정 |
@@ -16,8 +16,9 @@
 |---|---|---|
 | **DDL 진실원** | `pulsemetry-backend` | `libs/enrollment-persistence`의 **Flyway 마이그레이션**. 운영 DB를 바꾸는 유일한 경로 |
 | 설계도 | `rdb-schema` | `dbdiagram.dbml`. 팀이 함께 보는 다이어그램이며 **마이그레이션 도구가 아니다** |
-| dev 부트스트랩 | `ai-telemetry-pipeline` | `sql/rds/schema.sql`·`seed.sql`. **편의용이며 진실원이 아니다** |
-| 소비자 | `ai-telemetry-pipeline` | auth-proxy(`DATABASE_URL`), telemetry-processor(`ENRICHMENT_PG_DSN`) — **읽기만** 한다 |
+| dev 부트스트랩 | `pulsemetry-backend` | **`tools/dev-seed`(Docker 전용 — backend ADR 0031)**. 스키마는 각 모듈의 마이그레이션이, 시드 데이터는 이 도구가 넣는다. 서버는 시드 모듈을 의존하지 않는다. **편의용이며 진실원이 아니다** |
+| 현재 배포 소비자 | `ai-telemetry-pipeline` | auth-proxy(`DATABASE_URL`), telemetry-processor(`ENRICHMENT_PG_DSN`) — **읽기만** 한다 |
+| 목표 배포 소비자 | `pulsemetry-backend/:apps:telemetry-ingest` | `:libs:security`가 토큰 인증을, `:libs:telemetry-enricher`의 org provider가 팀 소속 조회를 맡는다. 읽기 전용이며, 이 앱은 Flyway를 실행하지 않는다(backend ADR 0016) |
 
 > **스키마를 바꿔야 하면 backend Flyway를 고친다.** dbml과 파이프라인 DDL은 뒤따라 맞춘다.
 > 세 곳이 갈라진 것이 E2E 차단 결함 B3의 절반이었다([`telemetry-ingest.md`](telemetry-ingest.md) §5).
@@ -87,3 +88,12 @@ tenants ──┬── teams ──── team_memberships ──── members
 | B3 | dev ECS에 enrollment 서버가 미배포이고, 로컬에서 backend와 파이프라인이 서로 다른 Postgres를 본다. 공유 RDS `controlplane`을 양쪽이 보는 구성으로 수렴시켜야 한다 — [`telemetry-ingest.md`](telemetry-ingest.md) §5 |
 | — | **부트스트랩 주체는 backend Flyway로 확정됐다**(backend ADR-0009). enrollment 서버가 dev에 배포되기 전까지는 backend 명세 §9.4의 로컬 `bootRun` 레시피가 **공식 잠정 절차**다 — 파이프라인 DDL을 psql로 직접 넣는 우회는 폐지됐다. 남은 것은 enrollment 서버의 dev 배포와 ECS에서 마이그레이션을 실행할 자리(infra 새 ADR 예정)다 |
 | — | Signal Database(ClickHouse) 쪽 스키마는 이 계약의 범위 밖이다. `enriched_events`의 컬럼 계약은 [`telemetry-ingest.md`](telemetry-ingest.md)가 다룬다 |
+
+## 사용자 인증 추가 (PROJ-107, 변경 중)
+
+Flyway V5가 invitations.signup_used_at과 user_sessions, user_refresh_tokens,
+user_authorization_codes, auth_attempts를 추가한다. 설치용 used_at은 그대로다.
+세션은 member FK와 정책 revision·절대 만료·폐기 시각을 갖는다. RT 이력의 session FK는 cascade 삭제다.
+세션당 미소비 RT는 부분 유니크 인덱스로 하나만 허용한다. RT·인증 코드·제한 subject는 SHA-256 해시로 저장한다.
+소비와 발급은 security 코어가 앱의 transaction manager로 조정하고, SQL 소유는 enrollment-persistence다.
+기존 테이블/데이터를 삭제하거나 토큰 해시 방식을 바꾸지 않는다. dbml은 rdb-schema가 뒤따른다.
