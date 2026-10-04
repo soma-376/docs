@@ -37,8 +37,10 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0008 | [manifest 재동기화와 설치 인증 유지](0008-manifest-resync-and-installation-credentials.md) | Accepted — 계약 리뷰 대기 |
 | 0010 | [설치는 heartbeat 한 경로로 생존·수집 상태·적용한 정책 판을 보고한다](0010-installation-heartbeat-and-policy-acknowledgement.md) | Proposed |
 | 0011 | [데몬 업데이트 확인의 최신 버전은 서버가 배포하는 바이너리의 판이고 비교는 서버가 한다](0011-daemon-update-check-uses-served-binary-version.md) | Proposed |
+| 0016 | [등록 제품은 조직당 하나로 관리하고 계약 변경은 입력 정정으로 처리한다](0016-registered-products-and-contract-corrections.md) | Accepted |
+| 0017 | [조직에 등록한 제품을 기준으로 미등록 제품 사용을 알린다](0017-registered-product-usage-alerts.md) | Accepted |
 
-새 ADR은 `0012`부터. `0009`는 다른 브랜치가 쓰고 있어 비워 둔다. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0018`부터. `0009`는 다른 브랜치가 쓰고 있어 비워 둔다. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
@@ -76,7 +78,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 33 (0001–0033) | **한국어 슬러그.** 새 ADR은 `0034`부터 — 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0009`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 10 (0001–0008, 0010–0011) | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 12 (0001–0008, 0010–0011, 0016–0017) | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
