@@ -43,3 +43,11 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 
 MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. frontend 착수 시 증류해
 [`../product/`](../product/prd.md)로 옮긴다.
+
+## 초대·구성원 사용 예정 제품 (변경 중)
+
+[ADR 0015](../adr/0015-invitation-planned-vendors.md)에 따라 프론트·백엔드를 함께 변경한다.
+`POST /api/v1/organizations/{id}/invitations/batch`의 각 항목에 `plannedVendorIds?: string[]`를 추가한다.
+0~100개, 중복 없는 등록 제품 ID 목록(영숫자·하이픈·밑줄, 1~100자)이며 생략하면 미지정이다. 잘못된 형식은 400, 타 조직·미등록·보관 제품은 해당 행을 `rejected / vendor_not_found`로 반환한다.
+`PATCH /members/{memberId}`도 같은 필드를 받아 전체 교체한다. 생략은 유지, 빈 배열은 해제이며 기존 expectedVersion 규칙을 적용한다. 보관된 기존 선택의 유지·제거는 허용하되 새 추가는 거부한다.
+초대 목록의 항목·구성원 조회·구성원 변경 응답에 `plannedVendorIds`를 반환한다. 이는 실제 좌석 배정·외부 제품 접근 권한을 뜻하지 않는다.
