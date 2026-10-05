@@ -5,6 +5,8 @@
 | 당사자 | **frontend(레포 미생성)** ↔ **backend(소재 미정)** |
 | 상태 | **골격.** 착수 전이며 확정된 것이 없다 |
 
+애플리케이션 API의 정식 경로는 [ADR 0016](../adr/0016-use-api-v1-for-application-http-routes.md)에 따라 `/api/v1`이다. 기존 `/v1` 경로는 지원하지 않는다. 프론트엔드 BFF·OIDC callback 등록 주소·ALB 규칙을 서버 배포와 함께 전환한다.
+
 > **이 문서는 자리표시자다.** 여기 적힌 것은 [`../architecture/overview.md`](../architecture/overview.md)에서
 > 이미 결정된 구조적 제약이며, 실제 엔드포인트·필드는 아직 하나도 정해지지 않았다.
 > 착수 시 이 문서를 [`enrollment-api.md`](enrollment-api.md) 수준으로 채운다.
