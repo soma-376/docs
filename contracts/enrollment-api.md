@@ -8,6 +8,8 @@
 | 관련 ADR | backend ADR-0003(계약과 2단 토큰), 0005(부트스트랩·바이너리 서빙), 0007(인증 계층), 0009(스키마 enum) |
 | 상태 | 확정 |
 
+애플리케이션 API 경로는 [ADR 0016](../adr/0016-use-api-v1-for-application-http-routes.md)에 따라 `/api/v1`로 통일한다. 기존 `/v1` 호출 경로는 지원하지 않는다. 서버·CLI·ALB 경로 및 헬스 체크를 같은 배포 단위에서 바꾼다.
+
 관리자가 발급한 일회성 초대 코드를 검증·소비해 사용자 PC의 설치(installation)를 만들고,
 그 설치에 귀속되는 자격증명과 회사 단위 OTel 설정(manifest)을 내려주는 계약이다.
 
@@ -15,13 +17,13 @@
 
 | 메서드 | 경로 | 인증 | 성공 | 호출자 |
 |---|---|---|---|---|
-| POST | `/v1/enroll` | 없음 (초대 코드 자체가 자격) | 201 | telemetryctl |
-| POST | `/v1/installations/telemetry-token` | `Authorization: Bearer <pit_…>` | 200 | telemetryctl (데몬) |
-| POST | `/v1/invitations` | `X-Admin-Token` | 201 | 관리자 |
-| POST | `/v1/invitations/{id}/revoke` | `X-Admin-Token` | 204 | 관리자 |
+| POST | `/api/v1/enroll` | 없음 (초대 코드 자체가 자격) | 201 | telemetryctl |
+| POST | `/api/v1/installations/telemetry-token` | `Authorization: Bearer <pit_…>` | 200 | telemetryctl (데몬) |
+| POST | `/api/v1/invitations` | `X-Admin-Token` | 201 | 관리자 |
+| POST | `/api/v1/invitations/{id}/revoke` | `X-Admin-Token` | 204 | 관리자 |
 | GET | `/windows?code=…` / `/unix?code=…` | 없음 | 200 `text/plain` | 사용자 셸 |
 | GET | `/bin/{filename}` | 없음 | 200 `application/octet-stream` | 부트스트랩 스크립트 |
-| GET | `/v1/healthz` | 없음 | 200 | 운영 |
+| GET | `/api/v1/healthz` | 없음 | 200 | 운영 |
 
 스크립트·바이너리 경로에 `/v1` 접두사가 없는 것은 의도다 — 사용자가 터미널에 붙여넣는 URL이라 짧아야 한다.
 
@@ -36,7 +38,7 @@
 규칙은 `pulsemetry_{os}_{arch}`(Windows만 `.exe`)다. **이 이름으로 산출물을 만드는 릴리스
 파이프라인은 `telemetryctl`에 아직 없다**(backend ADR-0005 Follow-up의 서빙 전제 3건 중 하나).
 
-## 2. `POST /v1/enroll`
+## 2. `POST /api/v1/enroll`
 
 **요청**
 
@@ -71,7 +73,7 @@ WHERE code_hash = :codeHash AND used_at IS NULL AND revoked_at IS NULL AND expir
 
 **enroll 성공은 대상 멤버의 `invited → active` 전환 이벤트다.** OTLP 경로의 auth-proxy가
 `invited` 멤버의 토큰을 거부하므로, 이 전환 없이는 발급된 telemetry token이 전부 401이 된다
-([`telemetry-ingest.md`](telemetry-ingest.md) §3). 재발급(`POST /v1/installations/telemetry-token`)도
+([`telemetry-ingest.md`](telemetry-ingest.md) §3). 재발급(`POST /api/v1/installations/telemetry-token`)도
 같은 전환을 보정한다 — `pit_` 인증이 과거 enroll 완료의 증명이기 때문이다.
 전환은 `invited`에서만 일어난다. **`suspended`는 어느 경로도 건드리지 않는다** — 정지 해제는 관리자의 결정이지 설치의 부수효과가 아니다.
 
@@ -171,7 +173,7 @@ backend의 무염 SHA-256과 어긋나 있었다. **시드는 dev 편의용이�
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 강등 상태에서는 포워더 `Scrub`이 경로 밖이라 **manifest `privacy` 집행에 공백이 생긴다**(같은 문서 §5 M13). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
 | M10 | heartbeat·config 재조회·토큰 회전 부재. `installations.last_seen_at`·`telemetry_tokens.last_used_at`은 죽은 컬럼이고, `config_revision`은 저장만 하고 비교하지 않는다 | **manifest 변경이 기존 설치에 전파될 경로가 없다** ([`../product/prd.md`](../product/prd.md) §8-1) |
-| — | `/v1/enroll`에 rate limit이 없다 | 60비트 초대 코드의 유일한 브루트포스 표면이 무방비 |
-| — | `POST /v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
+| — | `/api/v1/enroll`에 rate limit이 없다 | 60비트 초대 코드의 유일한 브루트포스 표면이 무방비 |
+| — | `POST /api/v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
 | — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과). **기존 저장 manifest 주의** — `required` 추가라 이 필드가 없는 기존 v1 manifest는 서버 검증에서 409 `manifest_not_configured`가 된다. 테넌트 온보딩 전 수동 INSERT 점검이 필요하다 | — |

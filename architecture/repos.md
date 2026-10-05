@@ -68,7 +68,7 @@ apps/enrollment-api/         Spring Boot 애플리케이션 (유일한 app)
 libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이그레이션
 ```
 
-- **소유**: `POST /v1/enroll`, `POST /v1/installations/telemetry-token`, `POST /v1/invitations`,
+- **소유**: `POST /api/v1/enroll`, `POST /api/v1/installations/telemetry-token`, `POST /api/v1/invitations`,
   부트스트랩 스크립트·바이너리 서빙(`GET /windows|/unix|/bin/{f}`), **manifest 저장**,
   그리고 **enrollment 스키마의 진실원(Flyway)**.
 - **아직 없지만 이 레포의 몫**: 사람 계정·로그인(이 레포가 Auth Service다), manifest 작성 API(현재 수동 INSERT).

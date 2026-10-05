@@ -33,8 +33,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0004 | [텔레메트리 파이프라인을 backend 레포로 병합한다](0004-telemetry-pipeline-repo-merge.md) | Accepted |
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted |
 | 0015 | [초대 시 선택한 사용 예정 제품은 실제 좌석과 분리한다](0015-invitation-planned-vendors.md) | Accepted |
+| 0016 | [애플리케이션 HTTP API는 /api/v1을 정식 경로로 사용한다](0016-use-api-v1-for-application-http-routes.md) | Accepted |
 
-새 ADR은 `0016`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0017`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
@@ -66,7 +67,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 6 | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 7 | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 

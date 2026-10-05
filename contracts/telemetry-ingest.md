@@ -25,7 +25,7 @@ Claude Code / Codex ── OTLP/HTTP + Bearer <로컬 ingest 토큰> + X-Pulseme
   ──▶ ClickHouse enriched_events (JSONEachRow)
 ```
 
-dev ECS 배포 경로는 ALB `:80 /v1/*` → auth-proxy → `collector.obs.local:4318` → 같은 태스크의 processor(`localhost:8080`).
+dev ECS의 OTLP 경로는 ALB `:80 /v1/{logs,metrics,traces}` → auth-proxy → `collector.obs.local:4318` → 같은 태스크의 processor(`localhost:8080`). 이 경로는 애플리케이션 API의 `/api/v1` 전환 대상이 아니다([ADR 0016](../adr/0016-use-api-v1-for-application-http-routes.md)).
 dev/배포 collector 설정은 각각 유지하되 **신원 전파 3요소는 PROJ-77로 동일해졌다**(§5 B4 해소).
 나머지 차이(gRPC 리시버·`create_directory`·exporter endpoint)는 환경 차이다.
 
@@ -69,7 +69,7 @@ manifest revision 대조는 이 경로에 없다 — 불투명 토큰에는 클�
 > 이 두 지점이 갈라지면 발급된 모든 토큰이 401이 된다.
 
 **회복 루프** — forwarder가 401/403을 받으면 토큰을 무효화하고
-`POST /v1/installations/telemetry-token`(`pit_` 인증, 10s 데드라인)으로 **1회 재발급 후 재시도**한다.
+`POST /api/v1/installations/telemetry-token`(`pit_` 인증, 10s 데드라인)으로 **1회 재발급 후 재시도**한다.
 재발급도 같은 해시 방식으로 발급되므로, 해시가 어긋난 상태에서는 이 루프가 복구를 만들지 못한다.
 
 ## 4. 신원 전파 (auth-proxy → collector → processor) — ★ 가장 자주 깨지는 지점
