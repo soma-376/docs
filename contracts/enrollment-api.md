@@ -6,7 +6,7 @@
 | 기계 판독 원본 | `telemetryctl/contracts/enrollment-manifest.schema.json`, `enrollment-envelope.schema.json` |
 | 서버 측 상세 | `pulsemetry-backend/docs/enrollment-server-spec.md` |
 | 관련 ADR | backend ADR-0003(계약과 2단 토큰), 0005(부트스트랩·바이너리 서빙), 0007(인증 계층), 0009(스키마 enum) |
-| 상태 | 확정 |
+| 상태 | 변경 중 — PROJ-203 데스크톱 설치·제거 계약 |
 
 관리자가 발급한 일회성 초대 코드를 검증·소비해 사용자 PC의 설치(installation)를 만들고,
 그 설치에 귀속되는 자격증명과 회사 단위 OTel 설정(manifest)을 내려주는 계약이다.
@@ -27,14 +27,26 @@
 
 ### 바이너리 산출물 이름 규칙 — 이 문서가 소유한다
 
-`GET /bin/{filename}`이 서빙하는 파일명은 **정확히 여섯 개**다. 만드는 쪽(`telemetryctl` 릴리스)과
-쓰는 쪽(backend `BinaryController` 화이트리스트, 부트스트랩 스크립트)이 서로 다른 레포라 이 목록이 계약이다.
+`GET /bin/{filename}`은 CLI 공개 이름 6개와 GUI 패키지 이름 6개를 허용한다.
+telemetryctl 릴리스와 backend 부트스트랩이 공유하는 목록이다.
 
-`pulsemetry_windows_amd64.exe` · `pulsemetry_windows_arm64.exe` · `pulsemetry_darwin_amd64` ·
-`pulsemetry_darwin_arm64` · `pulsemetry_linux_amd64` · `pulsemetry_linux_arm64`
+| OS | CLI 공개 이름 | GUI 패키지 이름 |
+|---|---|---|
+| Windows | `pulsemetry_windows_{arch}.exe` | `pulsemetry_gui_windows_{arch}.exe` |
+| macOS | `pulsemetry_darwin_{arch}` | `pulsemetry_gui_darwin_{arch}.dmg` |
+| Linux | `pulsemetry_linux_{arch}` | `pulsemetry_gui_linux_{arch}.AppImage` |
 
-규칙은 `pulsemetry_{os}_{arch}`(Windows만 `.exe`)다. **이 이름으로 산출물을 만드는 릴리스
-파이프라인은 `telemetryctl`에 아직 없다**(backend ADR-0005 Follow-up의 서빙 전제 3건 중 하나).
+`arch`는 `amd64` 또는 `arm64`다. 릴리스 디렉터리 `v<version>`에서 CLI 공개 이름을
+`pulsemetry_cli_{os}_{arch}[.exe]`에 매핑하고 GUI 이름은 그대로 찾는다.
+서버는 선택한 릴리스의 `SHA256SUMS`로 파일을 검증한다. 릴리스 디렉터리가 없을 때의
+기존 평면 CLI 서빙은 유지하지만, GUI는 체크섬 없는 평면 파일을 서빙하지 않는다. 해당 파일이나 유효한 체크섬이 없으면
+404이며, 다른 버전의 파일로 대체하지 않는다. GUI 파일은 CLI 자동 업데이트 대상이 아니다.
+
+부트스트랩은 CLI와 GUI를 모두 다운로드한 뒤 사용자 범위에 설치하고 제거용 파일 기록을 등록한다.
+제거 도구 등록에 성공해야 enroll을 실행하며, enroll 성공 뒤 GUI를 시작한다.
+GUI 패키지가 없는 구형 릴리스로는 새 부트스트랩을 배포하지 않는다.
+GUI만 직접 설치한 경우에도 최초 실행 또는 Windows 설치 과정에서 독립 제거 도구를 등록한다.
+설치·제거 책임은 [ADR 0017](../adr/0017-desktop-installation-and-removal.md)을 따른다.
 
 ## 2. `POST /v1/enroll`
 
