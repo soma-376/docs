@@ -2,12 +2,14 @@
 
 | 항목 | 내용 |
 |---|---|
-| 당사자 | **frontend(레포 미생성)** ↔ **backend(소재 미정)** |
-| 상태 | **골격.** 착수 전이며 확정된 것이 없다 |
+| 당사자 | **pulsemetry-frontend** ↔ **pulsemetry-backend** |
+| 상태 | 현재 화면 조회·계약 알림의 공통 계약. 필드별 상세는 각 레포 API 문서가 소유 |
 
-> **이 문서는 자리표시자다.** 여기 적힌 것은 [`../architecture/overview.md`](../architecture/overview.md)에서
-> 이미 결정된 구조적 제약이며, 실제 엔드포인트·필드는 아직 하나도 정해지지 않았다.
-> 착수 시 이 문서를 [`enrollment-api.md`](enrollment-api.md) 수준으로 채운다.
+현재 업무 API의 경로는 `/api/v1`이다. 경로 전환 자체는 PROJ-200의 별도 변경이며 이 문서는 현재 화면의 조회 계약을 다룬다.
+
+> 이 문서는 구조적 제약·화면별 조회 경계를 담는다. 필드별 상세는 backend의
+> `docs/api/README.md` 및 `docs/api/reference/`, frontend의 `docs/api/`에서 관리한다.
+> 코드와 계약의 반영은 운영 배포 완료를 뜻하지 않는다.
 
 ## 1. 이미 정해진 제약
 
@@ -24,22 +26,32 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 | 7 | **시나리오는 새 지표를 만들지 않는다.** 카탈로그가 참조하는 지표는 지표 레지스트리에 정의돼 Signal DB에 이미 존재하는 것뿐이다 | overview.md I-13 |
 | 8 | 시나리오 적용 상태는 **`?scenario={id}`** 로 표현해 링크 공유 시 같은 화면이 복원되게 한다 | prd.md §6-1 |
 
-## 2. 착수 전 정해야 할 것
+## 2. 조회 소유와 권한
 
-- **Dashboard API 서버가 어디에 사는가** — `pulsemetry-backend`에 모듈로 추가할지 별도 레포로 뗄지.
-  이것은 크로스레포 결정이므로 [`../adr/`](../adr/README.md)에 ADR로 남긴다.
-- **웹 대시보드 로그인·세션** — backend Spring Security가 AT·RT를 직접 발급한다(backend ADR-0007 Accepted, 구현은 아직 없다).
-  Cognito는 쓰지 않는다([허브 ADR-0001](../adr/0001-otlp-authentication-model.md) — infra ADR-0008은 Superseded).
-  `members.cognito_user_sub`는 제거됐고 비밀번호 자리는 `members.password_hash`다([`data-model.md`](data-model.md) §3).
-  사원이 CLI에서 하는 로그인과 데몬의 OTLP 인증(installation에 귀속된 `ptt_`)은 이 문서의 범위가 아니다.
-- 인가 모델 — 계정은 `members` 하나지만 **웹 대시보드에 들어오는 사람은 관리자(`role`이 `owner`·`admin`)뿐이다.**
-  일반 사원(`role='member'`)은 같은 계정으로 CLI·파이프라인 쪽만 쓴다. 이 구분은 role 기반 인가로 막는다.
-  팀장 권한 분리는 Non-goal이다.
-- 응답 스키마의 버저닝 정책 — enrollment API가 `DisallowUnknownFields`로 겪는 문제
-  ([`enrollment-api.md`](enrollment-api.md) §6 M7)를 반복하지 않는다.
-- 지표 레지스트리와 시나리오 카탈로그의 배포 형태(전역 참조 데이터를 어떻게 내려주는가).
+`pulsemetry-backend/apps/dashboard-api`가 분석·설정·좌석·알림 조회를 맡는다. 조직·구성원·정책·계약의 관리 명령은 같은 레포의 `apps/enrollment-api`가 맡는다. dashboard-api는 원천을 읽고 자신의 집계 캐시만 쓴다. 프론트는 동일 출처 BFF에서 두 API를 구분해 호출한다(backend ADR 0026). 이는 현재 코드의 소유 경계이며 backend ADR 0022의 Proposed 상태와 별도 캐시·배포 전 채택 조건을 변경하지 않는다.
 
-## 3. 화면
+웹 대시보드는 `owner`·`admin`만 접근한다. 로그인·서비스 토큰의 상세 계약은 backend `docs/api/auth.md`와 frontend `docs/oidc-login.md`가 소유하며, 인증 결정 정리는 PROJ-188에서 별도로 진행한다. 이 변경은 인증 방식이나 권한을 바꾸지 않는다.
 
-MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. frontend 착수 시 증류해
-[`../product/`](../product/prd.md)로 옮긴다.
+## 3. 현재 화면
+
+개요·팀 분석·구성원·운영·보안·설정을 제공한다. 아래 조회 계약과 [제품 정의](../product/prd.md)의 현재 화면 범위를 따른다.
+
+## 4. 개요 단일 API
+
+[ADR 0017](../adr/0017-overview-screen-contract.md)에 따라 개요는 화면 전용 응답과 지표별 상태를 반환한다. 상세 계약은 backend `docs/api/reference/overview.md`와 frontend `docs/api/overview-api.md`를 따른다. 양쪽을 함께 배포한다.
+
+## 5. 수집 사유·계약 상태
+
+[ADR 0018](../adr/0018-dashboard-completeness-and-contract-input.md)에 따라 개요의 reasons에 날짜별 수집 미완료 근거를 추가한다. `contract-input-status` GET은 설정 권한으로 현재 계약 미입력 벤더 목록을 조회한다. [ADR 0020](../adr/0020-expired-contract-notifications.md)에 따라 같은 응답에 만료 계약 목록도 제공한다. 수집 상태·사용 환산액과 독립적이며 프론트와 백엔드를 함께 적용한다.
+
+## 6. 나머지 페이지의 조회 투영
+
+[ADR 0019](../adr/0019-dashboard-page-read-models.md)에 따라 팀 분석·구성원·운영·설정 응답은 현재 화면의 값과 상태만 제공한다. 목록·상세·관리 명령의 조회 경계와 snapshot 페이지네이션은 유지한다. 팀의 증감·사용자당 값은 서버가 판정하고, 구성원은 현재 명단과 기간 사용량을 분리한다. 운영 알림은 안전한 화면용 근거와 평가 상태만 반환하고, 설정의 벤더 상세는 상세 요청에서 받는다. 헤더 수집 상태를 각 페이지 응답에 중복하지 않는다. 프론트와 백엔드 계약은 함께 반영하며 CSV도 같은 값·상태·사유를 보존한다.
+
+## 7. 만료 계약 알림과 갱신
+
+`GET /api/v1/organizations/{id}/contract-input-status`는 기존 `requiredCount/vendors`와 별도로 `expiredCount/expiredContracts`를 반환한다. 각 만료 항목은 `vendorId/displayName/endDate`다. 최신 등록 계약의 종료일 다음 날(KST)부터 만료이며, 보관된 벤더와 미입력·시작 예정·종료일 없는 계약은 제외한다. 계약 원천 조회 한 번으로 두 목록을 만들며 전체 설정이나 사용량을 조회하지 않는다.
+
+공통 알림함은 미확인 규칙 알림과 현재 만료 계약을 함께 표시한다. 만료 알림의 ‘계약 갱신’은 `/settings?vendor={vendorId}`로 이동해 해당 계약 폼을 연다. 만료 계약에는 별도 확인 처리가 없으며, 갱신 저장 성공 후 조직 조회를 갱신하면 목록과 벨 건수에서 사라진다. 규칙 알림의 확인 동작은 유지한다.
+
+벨 건수는 미확인 규칙 알림 수와 만료 계약 수의 합이다. 한 조회라도 실패하면 합계를 0으로 표현하지 않고, 알림함에서 해당 조회를 재시도한다. 계약 미입력은 기존 헤더 안내를 유지하고, 만료 안내를 설정 상단이나 운영·보안 목록·CSV에 중복하지 않는다. 세부 응답은 backend `docs/api/reference/contract-input-status.md`와 frontend `docs/api/alerts-api.md`를 따른다.

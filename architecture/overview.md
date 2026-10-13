@@ -284,7 +284,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 
 ## 5. 목표 구조 대비 현재 구현 (요약)
 
-이 문서는 목표 구조다. 2026-08 기준 구현은 다음 지점에서 다르다. 레포별 상세는 [`repos.md`](repos.md).
+이 문서는 목표 구조다. 대시보드의 현재 상태는 코드 기준이며 실제 배포 상태를 증명하지 않는다. 파이프라인 항목은 기존 조사 기록이며 이번 화면 개선에서 재검증하지 않았다. 레포별 상세는 [`repos.md`](repos.md)를 따른다.
 
 | 목표 컴포넌트 | 현재 |
 |---|---|
@@ -292,10 +292,12 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 | Raw Signal Object Storage | 파일 아카이브로 대체. **write-only** — 재처리 리더가 없다 |
 | Adapter의 공시 단가 환산 | placeholder 단가표 |
 | Auth Service | `pulsemetry-backend`의 enrollment-api가 설치 토큰 발급까지 담당. 사람 계정·로그인은 미구현 |
-| Dashboard API | 미착수. frontend 레포도 없다 |
 | ~~Identity Provider~~ (목표 구조에서 제거 — 허브 ADR-0001) | 인증은 앱 계층: 현행 auth-proxy(OTLP), backend Spring Security로 이관 예정. Cognito 구축 코드는 의도적 잔존(제거 예정) |
+| Dashboard API · 웹 | backend의 dashboard-api와 pulsemetry-frontend가 있다. 개요·팀 분석·구성원·운영·설정은 화면별 조회 응답을 사용하고 웹 업무 요청은 BFF를 거친다. 배포 상태는 별도 검증 대상 |
 
-**I-2 · I-8 · 흐름 D는 아직 구조적으로 미충족**이다. MVP 진행 단계로 보면 자연스럽지만, 미충족 상태임을 문서가 감추지 않는다.
+대시보드 응답은 [ADR 0017](../adr/0017-overview-screen-contract.md)·[ADR 0019](../adr/0019-dashboard-page-read-models.md)에 따라 화면에 쓰는 값과 상태를 제공한다. 서버가 지표의 확인된 0·부분 관측·확인 불가와 비교 불가 사유를 판정하고, 프론트는 같은 결과를 화면과 CSV에 표시한다. 개요의 부분 실패 재시도는 단일 API를 다시 호출하며, 성공한 영역은 유지한다. 팀 목록·상세의 snapshot과 구성원의 현재 명단·기간 사용량은 구분한다. 설정의 벤더 목록은 가볍게 조회하고 계약·좌석·커넥터 상세는 필요할 때 개별 조회한다.
+
+기존 조사에서는 **I-2 · I-8 · 흐름 D의 구조적 미충족**을 기록했다. 현재 파이프라인·배포의 충족 여부는 해당 작업에서 다시 확인해야 한다.
 
 ---
 
