@@ -20,7 +20,7 @@ E2E 검증에서 확인된 차단 결함 4건 중 3건이 "구간 내부의 버�
 | [`enrollment-api.md`](enrollment-api.md) | `telemetryctl` ↔ `pulsemetry-backend` | 확정 |
 | [`telemetry-ingest.md`](telemetry-ingest.md) | `telemetryctl` (·AI tool) → `ai-telemetry-pipeline` (·`infra`) | 확정 — 미해결 배선 1건(B3) |
 | [`data-model.md`](data-model.md) | `pulsemetry-backend` ↔ `ai-telemetry-pipeline` (·`rdb-schema`) | 확정 |
-| [`dashboard-api.md`](dashboard-api.md) | frontend(예정) ↔ backend | **골격** |
+| [`dashboard-api.md`](dashboard-api.md) | `pulsemetry-frontend` ↔ `pulsemetry-backend` ↔ `infra` | 확정 — 조회/명령·runtime·배포 책임 (ADR 0021), 사용자 JWT 키 공급 (ADR 0022), live 배포 별도 |
 
 ## 규칙
 

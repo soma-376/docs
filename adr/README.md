@@ -32,16 +32,20 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0003 | [텔레메트리 파이프라인은 별도 레포로 유지하고 collector만 backend로 이관한다](0003-telemetry-pipeline-repo-boundary.md) | Superseded by [ADR 0004](0004-telemetry-pipeline-repo-merge.md) |
 | 0004 | [텔레메트리 파이프라인을 backend 레포로 병합한다](0004-telemetry-pipeline-repo-merge.md) | Accepted |
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted |
+| 0021 | [Dashboard runtime과 배포 경계를 backend와 infra가 나눠 소유한다](0021-dashboard-runtime-and-deployment-contract.md) | Accepted (JWT 키 공급은 ADR 0022로 보충) |
+| 0022 | [사용자 JWT 키는 별도 Secrets Manager Secret의 버전을 파일로 공급한다](0022-user-jwt-key-provisioning.md) | Accepted |
 
-새 ADR은 `0006`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0023`부터. `0006`~`0020`은 다른 인증·설치·API 경로·화면 계약 브랜치에서 사용/예약 중이므로 재사용하지 않는다. 이 브랜치는 해당 ADR을 가져오거나 번호를 바꾸지 않는다. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
-- Dashboard API 서버의 소재 — `pulsemetry-backend` 모듈인가 별도 레포인가 ([`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2)
 - 계약 응답 스키마의 버저닝 정책 — tolerant reader로 갈 것인가 ([`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §6 M7)
 - Provider 공시 단가표의 소유·갱신 주체와 저장 위치 ([`../product/prd.md`](../product/prd.md) §8-5)
 
 **후보에서 결정으로 옮겨간 것:**
+
+- Dashboard 소재·캐시·runtime·배포 책임 → [ADR 0021](0021-dashboard-runtime-and-deployment-contract.md)
+- 사용자 JWT 키의 최초 생성·원본·버전·파일 공급·교체 책임 → [ADR 0022](0022-user-jwt-key-provisioning.md)
 
 - 텔레메트리 파이프라인의 소유 레포 → [ADR 0004](0004-telemetry-pipeline-repo-merge.md)
   (backend 레포로 병합. **대체됨(ADR 0004)** — 0003의 전체 병합 기각 결정은 더 이상 유효하지 않다)
@@ -60,12 +64,12 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
-| `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
-| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 10 (0001–0010) | **한국어 슬러그.** 새 ADR은 `0011`부터 |
+| `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 현재 번호는 레포 인덱스가 기준 |
+| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **한국어 슬러그.** 현재 번호는 레포 인덱스가 기준 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 5 | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 7 (현재 브랜치) | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
