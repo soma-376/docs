@@ -33,8 +33,8 @@ flowchart LR
     CDN["CDN"]
   end
   subgraph SVC["Service"]
-    AUTH["Auth Service<br>계정 · 설치 토큰 발급"]
-    DASH["Dashboard API<br>지표 조회 + 조직 설정"]
+    AUTH["Auth Service / enrollment-api<br>계정 · 설치 토큰 · 조직 관리 명령"]
+    DASH["Dashboard API<br>지표·설정 조회"]
   end
   subgraph PIPE["Telemetry Pipeline"]
     COL["Collector"]
@@ -44,7 +44,9 @@ flowchart LR
   end
   subgraph DB["Database"]
     USERDB["User Database<br>조직 · 팀 · 사용자 · 정책 · 계약"]
-    SIGDB["Signal Database (ClickHouse)<br>시그널 + 집계 + 공시 기준 금액"]
+    SIGDB["Signal Database (ClickHouse)<br>원천 시그널 + 집계 + 공시 기준 금액"]
+    RDSCACHE["Dashboard Cache (RDS)<br>dashboard_cache schema · manifest · 알림"]
+    CHCACHE["Dashboard Cache (ClickHouse)<br>dashboard_cache DB · snapshot payload"]
   end
   subgraph OBJ["Object Storage"]
     RAW["Raw Signal Object Storage<br>마스킹 완료 · 재처리용"]
@@ -57,6 +59,9 @@ flowchart LR
   subgraph OBS["Observability"]
     CWL["CloudWatch"]
     SEN["Sentry"]
+  end
+  subgraph KEYS["Runtime key supply"]
+    JWTKEYS["Secrets Manager<br>환경별 JWT 개인키·공개키 Secret"]
   end
 
   AITOOL --> DESKTOP
@@ -72,6 +77,8 @@ flowchart LR
   AUTH --> USERDB
   DASH --> USERDB
   DASH --> SIGDB
+  DASH --> RDSCACHE
+  DASH --> CHCACHE
   COL --> MASK
   MASK --> ADP
   MASK --> RAW
@@ -81,6 +88,8 @@ flowchart LR
   RAW -. "재처리" .-> ADP
   PRICE -. "공시 단가" .-> ADP
   SCEN -. "시나리오 정의" .-> DASH
+  JWTKEYS -. "버전 지정 개인키·공개키 파일" .-> AUTH
+  JWTKEYS -. "버전 지정 공개키 파일만" .-> DASH
   COL -.-> OBS
   MASK -.-> OBS
   ADP -.-> OBS
@@ -89,7 +98,7 @@ flowchart LR
   DASH -.-> OBS
 ```
 
-9개 논리 영역 / 20개 컴포넌트.
+10개 논리 영역 / 23개 컴포넌트.
 
 | 영역 | 컴포넌트 | 역할 |
 |---|---|---|
@@ -98,10 +107,11 @@ flowchart LR
 | Gateway | API Gateway (ALB), CDN | 외부 → 내부의 유일한 진입점과 정적 자산 배포 |
 | Service | Auth Service, Dashboard API | 요청-응답형(동기) 서비스 |
 | Telemetry Pipeline | Collector, Masker, Adapter, Enricher | 수집 데이터의 단방향 처리 파이프라인 |
-| Database | User Database, Signal Database (ClickHouse) | 조회용 정형 데이터 |
+| Database | User Database, Signal Database (ClickHouse), Dashboard Cache (RDS/ClickHouse) | 원천 정형 데이터와 dashboard 소유 파생 캐시 |
 | Object Storage | Raw Signal Object Storage, 프론트엔드 정적 저장소 | 마스킹 완료 시그널(재처리용)과 대시보드 빌드 산출물 |
 | Reference Data | Provider 공시 단가표, 시나리오 카탈로그 | 전역 참조 데이터. 조직에 종속되지 않는다 |
 | Observability | CloudWatch, Sentry | 처리 로그와 트레이싱. **데이터 평면이 아니다** |
+| Runtime key supply | Secrets Manager JWT 개인키·공개키 Secret | 명시적 버전의 키 파일 공급. 수집 데이터 저장소와 별도 운영 경계 |
 
 ### 짚어둘 것
 
@@ -118,6 +128,10 @@ flowchart LR
 - **Observability에 남는 것은 운영 로그이지 감사 로그가 아니다.** 감사 로그는 저장 대상·저장소가 정해지지 않아 범위 밖이다.
 - **인증 종결 지점은 애플리케이션 계층이다.** 경계(ALB)는 TLS 종단과 라우팅만 하고, 별도 auth 서버(외부 IdP)를 두지 않는다
   ([허브 ADR-0001](../adr/0001-otlp-authentication-model.md)이 infra ADR-0008의 ALB 인증안을 대체했다).
+- **사용자 JWT 키는 별도 운영 원본이다.** [ADR 0022](../adr/0022-user-jwt-key-provisioning.md)에 따라
+  환경별 고정 Secret 두 개를 `aws/secretsmanager`로 암호화하고 명시적 초기화에서 생성한 키쌍을 버전으로 관리한다.
+  infra는 enrollment에 개인키·공개키 파일, dashboard에 공개키 파일만 공급하며 수집 경로에 JWT Secret 권한을 주지 않는다.
+  dev ECS/EKS는 같은 원본을 소비한다. 키 교체는 공개키 겹침→signer 전환→마지막 구 발급 후 330초→구 공개키 제거 순서다.
 
 ### 가공은 두 단계, 비용은 이원화
 
@@ -130,7 +144,7 @@ flowchart LR
 조직이 실제로 부담하는 금액은 계약에 종속되므로 조회 시 계산한다 — **계약이 바뀌어도 재적재가 필요 없다.**
 공시 단가 자체가 바뀌면 재처리로 소급 정정한다. 그래서 금액과 함께 **단가 버전**을 저장한다.
 
-파이프라인에서 조직별 데이터를 읽는 것은 **Masker뿐**이다. 집계·비용 전용 저장소는 없다.
+파이프라인에서 조직별 데이터를 읽는 것은 **Masker뿐**이다. dashboard snapshot은 별도 파생 캐시에 고정한다. 원천 적재와 조직 계약 계산 책임은 바뀌지 않는다.
 
 ---
 
@@ -166,7 +180,11 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 ```
 Web Browser → API Gateway → Dashboard API → Signal Database
                                           → User Database
+                                          → Dashboard Cache (snapshot manifest/payload)
 ```
+
+Dashboard API의 소재·별도 캐시·배포 책임은 [ADR 0021](../adr/0021-dashboard-runtime-and-deployment-contract.md)을 따른다.
+원천은 읽고 자기 캐시에만 쓰며, frontend의 관리 명령은 enrollment-api로 보낸다.
 
 사용량 수치(Signal)와 조직 구조(User)를 조인해야 "부서별·팀별 비용"이 나온다.
 조직이 부담하는 금액은 이 시점에 계산된다 — Signal DB의 토큰 집계 × User DB의 조직 계약 단가.
@@ -180,7 +198,8 @@ Signal DB에 이미 있는 공시 기준 금액은 계약 미입력 조직의 �
 ```
 
 - **검증은 앱 인증 계층이 한다.** 경계는 TLS 종단과 라우팅까지만 책임진다(허브 ADR-0001).
-- **발급은 Auth Service가 한다.** 외부 IdP는 발급에도 검증에도 관여하지 않는다.
+- **Pulsemetry 서비스 토큰 발급은 Auth Service(enrollment-api)가 한다.** dashboard는 발급 개인키 없이
+  공개키와 현재 RDS 세션·구성원·조직 상태로 검증한다. 인증 진입 경로는 [dashboard 계약 §2](../contracts/dashboard-api.md#2-공개-경로와-method-소유)를 따른다.
 - 설치 인스턴스 인증: 초대 코드 → `installation_token`(`pit_`)과 `telemetry_token`(`ptt_`) 발급 → 둘 다 OS 키링.
   자세한 계약은 [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md).
 - 주체가 다르다 — 웹은 **사람(관리자) 계정**, 데스크탑은 **설치 인스턴스(installation)**다.
@@ -217,7 +236,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 ### F — 정책 Manifest 배포
 
 ```
-쓰기   Web Browser → API Gateway → Dashboard API → User Database
+쓰기   Web Browser → API Gateway → enrollment-api(관리 명령) → User Database
 읽기   Desktop Application → API Gateway → Auth Service → User Database
        Masker → User Database
 ```
@@ -234,19 +253,20 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 
 ---
 
-## 3. 저장소 3종의 역할 분리
+## 3. 원천 저장소와 dashboard 캐시의 역할 분리
 
 | 저장소 | 담는 것 | 쓰는 주체 | 읽는 주체 |
 |---|---|---|---|
-| **User Database** | 조직 · 팀 · 사용자 · 권한 · 정책 · 조직별 계약 단가 | Auth Service(계정·토큰), Dashboard API(조직 설정) | Auth Service, Dashboard API, Masker(정책) |
+| **User Database** | 조직 · 팀 · 사용자 · 권한 · 정책 · 조직별 계약 단가 | enrollment-api(계정·토큰·조직 관리 명령) | Auth Service, Dashboard API, Masker(정책) |
 | **Raw Signal Object Storage** | 마스킹 완료 시그널 + 재처리용 메타데이터 | Masker | 재처리 배치 (트리거 2종) |
-| **Signal Database (ClickHouse)** | 정규화·보강된 조회용 시그널 + 시간 단위 집계 + 공시 기준 금액 | Enricher | Dashboard API |
+| **Signal Database (ClickHouse)** | 정규화·보강된 원천 시그널 + 시간 단위 집계 + 공시 기준 금액 | Enricher | Dashboard API |
+| **Dashboard Cache (RDS/ClickHouse)** | snapshot manifest·payload·알림 등 dashboard 파생 상태 | Dashboard API | Dashboard API, enrollment-api(알림 확인에 필요한 제한된 SELECT) |
 
 - Raw Signal Object Storage의 읽기 목적은 **재처리 둘뿐**이다. 어느 쪽도 사람이 원본을 열람하는 경로가 아니다.
   대시보드에 원본 조회 화면·API가 없는 이유다.
 - **Signal Database에 쓰는 주체는 Enricher 하나뿐**이다. 다른 컴포넌트가 직접 쓰기 시작하면 데이터 일관성이 즉시 깨진다.
   backend는 이 노드를 결합과 적재 두 모듈로 나눠 구현하며 쓰기는 적재 모듈 하나만 한다 — 주체가 하나라는 제약은 그대로다.
-- User Database에 쓰는 주체는 둘이고 다루는 영역이 겹치지 않는다. 파이프라인에서 이 저장소를 보는 것은 **Masker뿐**이다.
+- User Database의 관리·인증 쓰기는 enrollment-api가 소유한다. dashboard 쓰기는 자기 캐시 경계 안에 있다. 파이프라인에서 이 저장소를 보는 것은 **Masker뿐**이다.
 - 어떤 저장소에도 자격증명 원문을 쓰지 않는다(I-11).
 
 공유 도메인 모델(tenant / team / member)의 정의는 [`../contracts/data-model.md`](../contracts/data-model.md)에 있다.
@@ -262,9 +282,9 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 | I-1 | 외부 트래픽은 API Gateway(단일 진입점)를 통과한다. 클라이언트가 Collector·Dashboard API를 직접 호출하는 경로는 없다 | 인증 우회, 테넌트 위조 |
 | I-2 | Masker를 거치지 않은 데이터는 어떤 서버 저장소에도 쓰지 않는다 | 마스킹 전 PII 영속화 (되돌릴 수 없음) |
 | I-3 | 파이프라인 4단계를 건너뛰지 않는다 | 스키마 미변환 데이터가 Signal DB에 유입 |
-| I-4 | Signal Database 쓰기는 Enricher만 수행한다 | 보강 안 된 레코드 혼입, 집계 신뢰도 붕괴 |
-| I-5 | Dashboard API는 지표를 읽고 조직 설정을 쓴다. 파이프라인과 Signal Database에는 쓰지 않는다 | 읽기 경로와 수집 경로의 책임 분리 붕괴 |
-| I-6 | User Database 쓰기 주체는 둘뿐 — 계정·토큰은 Auth Service, 조직 설정은 Dashboard API | 권한 데이터 정합성 붕괴 |
+| I-4 | Signal Database 원천 쓰기는 Enricher만 수행한다. dashboard의 자기 캐시는 원천과 별도 경계다 | 보강 안 된 레코드 혼입, 집계 신뢰도 붕괴 |
+| I-5 | Dashboard API는 원천 지표·조직 설정을 읽고 자기 `dashboard_cache`만 쓴다. 파이프라인·Signal 원천에는 쓰지 않는다 (ADR 0021) | 읽기 경로와 수집 경로의 책임 분리 붕괴 |
+| I-6 | User Database의 계정·토큰·조직 관리 명령은 enrollment-api가 쓴다. dashboard는 원천 SELECT와 자기 캐시 DDL·쓰기만 가진다 (ADR 0021) | 권한 데이터 정합성 붕괴 |
 | I-7 | 클라이언트 마스킹을 신뢰해 서버 Masker를 생략하지 않는다 | 사용자 기기 코드가 유일한 방어선이 됨 |
 | I-8 | Raw Signal Object Storage에 사용자 조회 경로를 열지 않는다. 재처리는 내부 운영 도구로만 트리거한다 | 재처리용 저장소가 원본 열람 창구가 됨 |
 | I-9 | 재처리는 Adapter부터 시작한다. 이미 마스킹된 데이터를 Masker에 다시 태우지 않는다 | 데이터 이중 훼손 |
@@ -279,20 +299,22 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
   멱등성이 복구가 지표를 망치지 않게 한다. 셋 중 하나가 빠지면 흐름 D가 안전한 운영 절차가 되지 못한다.
 - **I-11은 토큰 해시 저장 방식과 충돌하지 않는다.** 파이프라인·오브젝트 스토리지에 자격증명을 남기지 않는다는 뜻이며,
   enrollment DB가 검증 목적으로 해시를 보관하는 것은 그 경계 밖이다 — [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) §4.
+  JWT 서명키의 Secrets Manager 보관·runtime 파일 공급도 별도 운영 경계다. 키 원문을 데이터 평면·로그·이미지에 남기지 않는다.
 
 ---
 
 ## 5. 목표 구조 대비 현재 구현 (요약)
 
-이 문서는 목표 구조다. 2026-08 기준 구현은 다음 지점에서 다르다. 레포별 상세는 [`repos.md`](repos.md).
+이 문서는 목표 구조다. 아래 표는 관련 구현과 배포 증거의 차이를 모은다. 과거 파이프라인 조사 항목의 최신 정합화는 별도다. 레포별 상세는 [`repos.md`](repos.md).
 
 | 목표 컴포넌트 | 현재 |
 |---|---|
 | Masker (조직별 규칙 2차 마스킹) | collector의 `redaction`(전역 고정 패턴)으로만 부분 구현. 조직별 규칙 참조 없음 |
 | Raw Signal Object Storage | 파일 아카이브로 대체. **write-only** — 재처리 리더가 없다 |
 | Adapter의 공시 단가 환산 | placeholder 단가표 |
-| Auth Service | `pulsemetry-backend`의 enrollment-api가 설치 토큰 발급까지 담당. 사람 계정·로그인은 미구현 |
-| Dashboard API | 미착수. frontend 레포도 없다 |
+| Auth Service | backend enrollment-api에 계정·서비스 토큰·설치·관리 명령이 구현돼 있다. 배포된 인증 동작은 별도 검증 |
+| Dashboard API | backend `apps/dashboard-api`와 `pulsemetry-frontend` 구현 존재. runtime 계약은 ADR 0021, AWS 서비스/DB 권한/live 기능 증거는 별도 |
+| Runtime key supply | 파일 기반 RS256 로더는 backend에 존재. ADR 0022의 원본·버전·파일 공급은 채택된 결정이며 최초 키 생성·Secret 등록·CDK/Helm 공급·live 교체/롤백은 별도 작업 |
 | ~~Identity Provider~~ (목표 구조에서 제거 — 허브 ADR-0001) | 인증은 앱 계층: 현행 auth-proxy(OTLP), backend Spring Security로 이관 예정. Cognito 구축 코드는 의도적 잔존(제거 예정) |
 
 **I-2 · I-8 · 흐름 D는 아직 구조적으로 미충족**이다. MVP 진행 단계로 보면 자연스럽지만, 미충족 상태임을 문서가 감추지 않는다.
@@ -304,7 +326,7 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 | # | 질문 | 막히는 작업 | 상태 |
 |---|---|---|---|
 | Q5 | Adapter의 변환 대상 스키마와 Enricher 보강 항목의 세부 필드 | 파이프라인 전체 | 부분 확정 — 구조는 *공통 스키마 + provider별 확장*으로 확정. 필드 미정 |
-| Q8 | 수집 트래픽과 대시보드 트래픽의 부하 분리 | Gateway 구성 | 부분 확정 — 같은 Gateway를 공유하고 경로로 분기. 뒷단 분리는 미정 |
+| Q8 | 수집 트래픽과 대시보드 트래픽의 부하 분리 | Gateway 구성 | 확정 — 같은 ALB에서 path+method로 ingest/enrollment/dashboard 별도 서비스·TG 분기 (ADR 0021), 실제 배포 검증 별도 |
 | Q10 | Self-hosted 배포 시 구성 차이 + 관측성 대체 경로 | 배포 아키텍처 | 미정 |
 | Q11 | 각 컴포넌트의 기술 스택·런타임 | 전체 | 부분 확정 — Signal DB = ClickHouse, User DB = PostgreSQL, 경계 = ALB, 관측성 = CloudWatch · Sentry |
 | Q14 | Provider 공시 단가표의 소유·갱신 주체와 저장 위치 | Adapter의 금액 환산 | 미정 |

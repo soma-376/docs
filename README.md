@@ -13,7 +13,7 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 | 결정의 이유 | ADR — 스코프 규칙은 [`adr/README.md`](adr/README.md) | 왜 ClickHouse인가, 왜 2단 토큰인가 |
 | 제품 정의·범위 | 이 허브의 [`product/`](product/prd.md) | 페르소나, MVP 범위, Non-goals |
 
-레포가 아직 없는 표면(frontend)의 착수 전 기획은 허브 `product/`에 임시 보관하고, 레포가 생기면 이관한다.
+레포 간 제품·화면 범위는 허브 `product/`에, 구현·API 소비 상세는 `pulsemetry-frontend/docs/`에 둔다.
 
 ## 읽는 순서
 
@@ -30,8 +30,8 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 | [`product/roadmap.md`](product/roadmap.md) | 마일스톤 골격 | 골격 |
 | [`architecture/overview.md`](architecture/overview.md) | 컴포넌트 지도·데이터 흐름·아키텍처 불변식 | 증류 완료 (원본 `archive/SA.md`) |
 | [`architecture/repos.md`](architecture/repos.md) | 레포별 역할·경계·현재 상태 | 조사 기반 신규 |
-| [`contracts/`](contracts/README.md) | 레포 간 계약 4건 | enrollment·ingest·data-model 확정, dashboard 골격 |
-| [`adr/README.md`](adr/README.md) | 크로스레포 ADR 인덱스 + 전 레포 카탈로그 | 카탈로그 완성, 크로스레포 ADR 3건 |
+| [`contracts/`](contracts/README.md) | 레포 간 계약 4건 | enrollment·ingest·data-model·dashboard 확정 |
+| [`adr/README.md`](adr/README.md) | 크로스레포 ADR 인덱스 + 전 레포 카탈로그 | 크로스레포 결정·타 브랜치의 번호 예약 안내 |
 | [`glossary.md`](glossary.md) | 도메인 용어 | 골격 |
 | [`onboarding.md`](onboarding.md) | 클론 배치·에이전트 셋업·첫 PR | 완성 |
 | [`archive/`](archive/README.md) | 증류 이전 원본 PLAN/SA/AA/IA | **기준 문서 아님** |

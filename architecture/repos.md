@@ -11,6 +11,7 @@ soma-376 org의 레포 지도다. **어느 레포에 코드를 쓸지, 그 레�
 soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 ├── docs/                        ← 이 레포. 제품·아키텍처·계약의 단일 출처
 ├── agent-skills/                ← 공용 에이전트 스킬 (Claude 플러그인 겸 Codex 스킬 소스)
+├── pulsemetry-frontend/
 ├── pulsemetry-backend/
 ├── telemetryctl/
 ├── ai-telemetry-pipeline/
@@ -27,10 +28,11 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 |---|---|---|---|---|
 | [`docs`](#docs) | Markdown | 제품·아키텍처·**레포 간 계약** | `main` | 크로스레포 ADR |
 | [`agent-skills`](#agent-skills) | Markdown + bash | 공용 에이전트 스킬 4종 | `main` | — |
-| [`pulsemetry-backend`](#pulsemetry-backend) | Kotlin / Spring Boot / Gradle | enrollment API, **enrollment 스키마의 진실원(Flyway)** | `develop` | 9건 |
+| [`pulsemetry-frontend`](#pulsemetry-frontend) | Next.js / TypeScript | 대시보드 화면·동일 출처 BFF·API 소비 | `develop` | — |
+| [`pulsemetry-backend`](#pulsemetry-backend) | Kotlin / Spring Boot / Gradle | enrollment·telemetry-ingest·dashboard 앱, 원천/캐시 DDL | `develop` | 레포 인덱스 |
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
-| [`infra`](#infra) | AWS CDK v2 (TS) | **모든 AWS 리소스**, collector 배포 설정 | `develop` | 23건 |
+| [`infra`](#infra) | AWS CDK v2 (TS) / Helm | **모든 AWS 리소스**, prod collector·Kubernetes 배포 설정 | `develop` | 레포 인덱스 |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -59,32 +61,39 @@ Claude Code 플러그인 마켓플레이스이자 Codex 스킬 소스. 스킬 4�
 - 형제 배치가 아닌 환경은 `scripts/install-codex-skills.sh`가 `~/.agents/skills`에 설치한다.
 - 설치·업데이트 경로는 [`../onboarding.md`](../onboarding.md).
 
+## pulsemetry-frontend
+
+대시보드 화면과 동일 출처 BFF를 소유한다. 조회는 dashboard-api, 관리 명령·인증 및 onboarding/invitations 조회는
+enrollment-api로 보낸다. DB·서버 DDL·AWS 배포는 소유하지 않는다.
+API 소비·필드별 화면 상태는 frontend `docs/api/`, 공통 소유·runtime 계약은 [dashboard 계약](../contracts/dashboard-api.md)을 따른다.
+
 ## pulsemetry-backend
 
-Kotlin + Spring Boot, Gradle 멀티모듈. [`overview.md`](overview.md)의 **Auth Service** 자리를 맡는다.
+Kotlin + Spring Boot, Gradle 멀티모듈. Auth Service·Telemetry Pipeline·Dashboard API를 별도 앱으로 소유한다.
 
 ```
-apps/enrollment-api/         Spring Boot 애플리케이션 (유일한 app)
-libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이그레이션
+apps/enrollment-api/         인증·설치·조직 관리 명령 (:8080)
+apps/telemetry-ingest/       수집·마스킹·정규화·결합·적재 (:4316)
+apps/dashboard-api/         분석·설정·좌석·알림 조회 (:8081)
+libs/enrollment-persistence/ 원천 JPA · 리포지토리 · enrollment/telemetry_ops Flyway
 ```
 
-- **소유**: `POST /v1/enroll`, `POST /v1/installations/telemetry-token`, `POST /v1/invitations`,
-  부트스트랩 스크립트·바이너리 서빙(`GET /windows|/unix|/bin/{f}`), **manifest 저장**,
-  그리고 **enrollment 스키마의 진실원(Flyway)**.
-- **아직 없지만 이 레포의 몫**: 사람 계정·로그인(이 레포가 Auth Service다), manifest 작성 API(현재 수동 INSERT).
-  구현이 없는 것이지 소유가 없는 것이 아니다.
-- **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2).
-- **파이프라인 병합이 채택됐다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
-  파이프라인 로직 전체가 이 레포로 오며, 도착지는 앱 하나(`:apps:telemetry-ingest`)와 단계별
-  `:libs:` 모듈들이다. **OTel Collector 바이너리는 쓰지 않고 수집·마스킹도 이 레포가 구현한다**
-  ([허브 ADR 0005](../adr/0005-single-app-telemetry-topology.md)). **ClickHouse 스키마 소유권**도 함께 이동한다.
-  auth-proxy는 폐기되고 OTLP 인증은 이 레포의 Spring Security가 맡는다(ADR-0007,
-  [허브 ADR 0001](../adr/0001-otlp-authentication-model.md)). 모듈 목록은 레포의 `docs/module-map.md`가 소유한다.
-  **이관은 아직 진행 전이다** — 현재 동작하는 파이프라인은 `ai-telemetry-pipeline`에 있다.
-- **소유하지 않음**: AWS 리소스·배포 설정(`infra`), 로컬 수신기·데몬·manifest 계약 스키마 파일(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
-- 모듈 경계·네임스페이스 규칙은 ADR-0008과 레포의 `docs/module-map.md`, 인증 계층은 ADR-0007.
-- 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 여전히 Flyway다.
-- 계약: [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) · 서버 측 상세 명세는 레포의 `docs/enrollment-server-spec.md`.
+- **소유**: enrollment API(`/api/v1/enroll`, 설치 토큰·초대·heartbeat·manifest), 인증 서비스,
+  bootstrap 스크립트·바이너리 서빙, 조직·정책·계약·좌석 관리 명령, 원천 Flyway와 ClickHouse 스키마.
+- **Dashboard 소재와 캐시 채택은 확정**([허브 ADR 0021](../adr/0021-dashboard-runtime-and-deployment-contract.md)).
+  `apps/dashboard-api`는 원천 RDS/ClickHouse를 읽고 자신의 `dashboard_cache`만 쓴다.
+  캐시 DDL은 앱이 기동 시 적용한다. 원천 schema/database·계정·권한 준비는 infra가 소유한다.
+- 사용자 JWT의 파일 로딩·RS256 발급/검증·기동 검증은 backend가 소유한다.
+  enrollment는 개인키·공개키를, dashboard는 공개키만 읽으며 ingest는 사용자 JWT 키를 소비하지 않는다.
+  키 원본·최초 생성·버전·교체의 공통 규칙은 [허브 ADR 0022](../adr/0022-user-jwt-key-provisioning.md)를 따른다.
+- **파이프라인 병합 결정**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md),
+  [ADR 0005](../adr/0005-single-app-telemetry-topology.md))에 따른 telemetry-ingest 앱이 구현돼 있다.
+  배포된 환경의 전환 여부는 앱 코드 존재와 별도 증거다. prod Collector 설정은 infra에 남는다.
+- **소유하지 않음**: AWS/CDK·Kubernetes/Helm 배포 설정(`infra`), dashboard 화면/BFF(`pulsemetry-frontend`),
+  로컬 수신기·데몬·manifest JSON Schema(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
+- 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 Flyway다.
+- 계약: [enrollment](../contracts/enrollment-api.md) · [dashboard](../contracts/dashboard-api.md).
+  실행/설정 상세는 backend `docs/enrollment-server-spec.md`, `docs/dashboard-server-spec.md`, `docs/module-map.md`에 둔다.
 
 > **루트의 `PLAN.md` · `PR.md` · `RALPH-PLAN.md` · `DOMAIN-BOUNDARY-NOTES.md` · `PLAN-ADR-0008.md` ·
 > `enrollment-api-branch-review.md` · `PR2-*.html`은 스크래치다. 스펙으로 신뢰하지 않는다.**
@@ -155,13 +164,18 @@ lib/cicd/    DeployStack + synthCicd()   (배포 역할 4개 — ADR-0024)
 config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
 ```
 
-- **소유**: 모든 AWS 리소스, **배포용 collector 설정**, 배포 역할.
+- **소유**: 모든 AWS 리소스, **prod 배포용 collector 설정**, 배포 역할과 Kubernetes/Helm 배포 설정.
+  dashboard의 ECS task/service·runtime 주입·ALB/TG/WAF, EKS AWS 자원·Helm workload는 infra가 소유한다.
+  원천/캐시 DB·schema·역할별 계정/권한은 [dashboard 계약 §3](../contracts/dashboard-api.md#3-네-저장소-연결과-ddl-책임)을 따른다.
+- 사용자 JWT의 고정 Secret 두 개와 최초 등록·보존·IAM·배포 버전 선택·runtime 파일 공급을 소유한다
+  ([허브 ADR 0022](../adr/0022-user-jwt-key-provisioning.md)). dev ECS/EKS는 같은 원본을 사용한다.
+  전달 구현은 infra ADR 0030에 두며 일반 재배포에서 키를 재생성하지 않는다.
 - **소유하지 않음**: 앱 코드. 앱 레포 CI는 이미지 빌드 → ECR push → `ecs update-service --force-new-deployment`까지만 한다.
   **태스크 정의를 바꾸려면 반드시 이 레포를 경유한다.**
 - 폴더 의존 방향은 `prod → common`, `dev → common`, `cicd → common` **단방향**. `prod ↔ dev` 상호 참조 금지.
 - region은 `ap-northeast-2`. account는 `CDK_DEFAULT_ACCOUNT`에서만 주입하고 코드·문서에 기록하지 않는다.
 - **`AGENTS.md`가 이 레포의 실질 핸드오프 문서다.** 3장(불변 규칙)과 5장(남은 작업)을 먼저 읽는다.
-- ADR 번호 `0020`은 로그 그룹 정책용으로 **예약**돼 있다. 새 ADR은 `0025`부터.
+- ADR 번호 `0020`은 로그 그룹 정책용으로 **예약**돼 있다. 현재 번호는 infra ADR 인덱스가 기준이다.
 
 ## rdb-schema
 
@@ -200,11 +214,9 @@ org 프로필 레포.
 
 ---
 
-## 아직 없는 레포
+## 현재 상태
 
-| 예정 | 담을 것 | 착수 전 기획 위치 |
-|---|---|---|
-| frontend (대시보드) | Dashboard API 클라이언트, 시나리오 런처 UI | 이 허브 `product/` (레포 생성 시 이관) |
-
-Dashboard API 서버가 `pulsemetry-backend`에 들어갈지 별도 레포가 될지는 미정이다.
-[`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) 참조.
+`pulsemetry-frontend`와 backend의 dashboard-api는 구현돼 있다. [dashboard runtime·배포 계약](../contracts/dashboard-api.md)은
+이 구현의 레포 경계를 채택한다. 실제 DB 권한·이미지 digest 공급·ECS/EKS 서비스 동작은 별도 배포 검증이 필요하다.
+사용자 JWT의 파일 기반 로더는 backend에 존재한다. ADR 0022의 키 원본·버전 공급 결정은 채택됐지만
+최초 키 생성·Secret 등록·CDK/Helm 파일 공급·live 교체/롤백은 별도 구현·검증이다.
