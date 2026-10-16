@@ -51,3 +51,5 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 검증된 Claude exclusive와 Codex inclusive 사용량은 같은 비중복 canonical 토큰 성분으로 정규화한 뒤 합산한다. 호환성이 확인되지 않은 의미 프로파일은 합산하지 않는다. 원천 캐시·reasoning 포함관계를 이중 합산하거나 미보고 성분을 0으로 채우지 않는다. 서로 다른 가격 판은 기존 혼재 판정을 유지한다. 승인된 과거 재평가는 기존 관측 ID와 원본을 보존해 최신 분석 판을 교체하며, API는 새 snapshot의 저장된 환산액을 읽는다.
 
 [ADR 0010](../adr/0010-current-reference-luna-model-pricing.md)의 v4는 정확한 `gpt-5.6-luna`·`gpt-6-luna` 공시 단가를 추가한다. 기존 v1/v2/v3는 그대로 선택 가능하다. `codex-auto-review`는 공개 단가/동일 모델 근거가 확인되지 않아 null을 유지하며, 다른 모델 가격이나 0원으로 대체하지 않는다.
+
+현재 기본 참조 가격판은 [ADR 0012](../adr/0012-codeburn-reference-pricing.md)의 고정된 Codeburn 카탈로그를 사용한다. 위 v4의 정책과 기존 가격판은 보존하며, 새 가격판에서는 Codeburn의 명시적 `codex-auto-review → gpt-5.5` 별칭을 환산 기준으로 사용한다. 이 선택은 실제 모델의 동일성이나 실제 청구액을 입증하지 않는다. 원본 모델·시각·토큰은 보존하며, 검증되지 않은 토큰 의미·미보고 성분·카탈로그에 없는 모델의 null 정책은 유지한다.

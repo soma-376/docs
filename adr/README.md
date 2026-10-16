@@ -38,8 +38,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0009 | [사용 환산액은 캐시 생성 5분 기준과 검증된 토큰 의미로 과거 관측도 재평가한다](0009-current-reference-cache-benchmark-and-revaluation.md) | Accepted |
 | 0010 | [공개 단가가 확인된 Luna 모델만 새 참조 가격판에 추가한다](0010-current-reference-luna-model-pricing.md) | Accepted |
 | 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted |
+| 0012 | [Codeburn의 모델 단가와 명시적 별칭을 참조 환산에 사용한다](0012-codeburn-reference-pricing.md) | Accepted |
 
-새 ADR은 `0012`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0013`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
@@ -78,7 +79,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 11 | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 12 | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
