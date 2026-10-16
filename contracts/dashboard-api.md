@@ -49,3 +49,5 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 [ADR 0008](../adr/0008-current-public-reference-valuation.md)과 [ADR 0009](../adr/0009-current-reference-cache-benchmark-and-revaluation.md)에 따라 현재 기준 환산은 버전을 고정한 공식 Standard/global/USD 토큰 단가의 평가 금액이다. v3는 Claude 캐시 생성에 5분 공시 단가를 평가 기준으로 사용하며 실제 TTL이 5분이었다고 판정하지 않는다. 과거 실제 청구액이나 조직 계약액을 뜻하지 않는다. 사건 시각·보고 금액은 보존하며, 미검증 토큰 의미나 필요한 성분이 없으면 null이다. 가격표 조회 기준 시각·출처·평가 조건은 `pricing_version`의 불변 프로파일에서 확인한다.
 
 검증된 Claude exclusive와 Codex inclusive 사용량은 같은 비중복 canonical 토큰 성분으로 정규화한 뒤 합산한다. 호환성이 확인되지 않은 의미 프로파일은 합산하지 않는다. 원천 캐시·reasoning 포함관계를 이중 합산하거나 미보고 성분을 0으로 채우지 않는다. 서로 다른 가격 판은 기존 혼재 판정을 유지한다. 승인된 과거 재평가는 기존 관측 ID와 원본을 보존해 최신 분석 판을 교체하며, API는 새 snapshot의 저장된 환산액을 읽는다.
+
+[ADR 0010](../adr/0010-current-reference-luna-model-pricing.md)의 v4는 정확한 `gpt-5.6-luna`·`gpt-6-luna` 공시 단가를 추가한다. 기존 v1/v2/v3는 그대로 선택 가능하다. `codex-auto-review`는 공개 단가/동일 모델 근거가 확인되지 않아 null을 유지하며, 다른 모델 가격이나 0원으로 대체하지 않는다.
