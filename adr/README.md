@@ -37,7 +37,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted |
 | 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted |
 
-새 ADR은 `0013`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+| 0022 | [프론트 이미지는 브랜치 머지 후 ECS에 자동 배포한다](0022-frontend-ecs-image-delivery.md) | Accepted |
+
+새 ADR은 `0023`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
