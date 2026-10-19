@@ -34,11 +34,8 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted |
 | 0006 | [OTLP ingest 는 영구 실패를 4xx 로, 일시 실패를 503 으로 돌려주고 배치 큐를 두지 않는다](0006-otlp-ingest-retry-and-status-contract.md) | Accepted |
 | 0007 | [분석 snapshot과 수집 생애주기 요약을 원본 저장소와 분리한다](0007-dashboard-snapshots-and-telemetry-lifetime-summary.md) | Proposed |
-| 0008 | [사용 환산액은 버전을 고정한 현재 공시 표준 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted |
-| 0009 | [사용 환산액은 캐시 생성 5분 기준과 검증된 토큰 의미로 과거 관측도 재평가한다](0009-current-reference-cache-benchmark-and-revaluation.md) | Accepted |
-| 0010 | [공개 단가가 확인된 Luna 모델만 새 참조 가격판에 추가한다](0010-current-reference-luna-model-pricing.md) | Accepted |
+| 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted |
 | 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted |
-| 0012 | [Codeburn의 모델 단가와 명시적 별칭을 참조 환산에 사용한다](0012-codeburn-reference-pricing.md) | Accepted |
 
 새 ADR은 `0013`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
@@ -51,8 +48,7 @@ ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영
 
 **후보에서 결정으로 옮겨간 것:**
 
-- 현재 공시 단가의 평가 기준·소유·버전 관리 → [ADR 0008](0008-current-public-reference-valuation.md)
-
+- 참조 단가의 평가 기준·출처·버전 관리와 저장 사용량 재평가 → [ADR 0008](0008-current-public-reference-valuation.md)
 - 텔레메트리 파이프라인의 소유 레포 → [ADR 0004](0004-telemetry-pipeline-repo-merge.md)
   (backend 레포로 병합. **대체됨(ADR 0004)** — 0003의 전체 병합 기각 결정은 더 이상 유효하지 않다)
 - OTLP 인증 모델 → [ADR 0001](0001-otlp-authentication-model.md)
@@ -75,7 +71,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
 | `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
-| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 17 (0001–0017) | **한국어 슬러그.** 새 ADR은 `0018`부터 |
+| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 64 (0001–0064), PR #37 기준 | **한국어 슬러그.** 다음 번호는 대상 브랜치 인덱스에서 확인 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |

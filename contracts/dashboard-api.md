@@ -44,12 +44,16 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. frontend 착수 시 증류해
 [`../product/`](../product/prd.md)로 옮긴다.
 
-## 현재 공시 단가 기준 사용 환산액
+## 사용 환산액
 
-[ADR 0008](../adr/0008-current-public-reference-valuation.md)과 [ADR 0009](../adr/0009-current-reference-cache-benchmark-and-revaluation.md)에 따라 현재 기준 환산은 버전을 고정한 공식 Standard/global/USD 토큰 단가의 평가 금액이다. v3는 Claude 캐시 생성에 5분 공시 단가를 평가 기준으로 사용하며 실제 TTL이 5분이었다고 판정하지 않는다. 과거 실제 청구액이나 조직 계약액을 뜻하지 않는다. 사건 시각·보고 금액은 보존하며, 미검증 토큰 의미나 필요한 성분이 없으면 null이다. 가격표 조회 기준 시각·출처·평가 조건은 `pricing_version`의 불변 프로파일에서 확인한다.
+[ADR 0008](../adr/0008-current-public-reference-valuation.md)에 따라 사용 환산액은 버전을 고정한 참조 단가표로 계산한
+Standard/global/USD 토큰 평가 금액이다. 실제 청구액·조직 계약액·벤더 보고 금액이 아니다.
 
-검증된 Claude exclusive와 Codex inclusive 사용량은 같은 비중복 canonical 토큰 성분으로 정규화한 뒤 합산한다. 호환성이 확인되지 않은 의미 프로파일은 합산하지 않는다. 원천 캐시·reasoning 포함관계를 이중 합산하거나 미보고 성분을 0으로 채우지 않는다. 서로 다른 가격 판은 기존 혼재 판정을 유지한다. 승인된 과거 재평가는 기존 관측 ID와 원본을 보존해 최신 분석 판을 교체하며, API는 새 snapshot의 저장된 환산액을 읽는다.
-
-[ADR 0010](../adr/0010-current-reference-luna-model-pricing.md)의 v4는 정확한 `gpt-5.6-luna`·`gpt-6-luna` 공시 단가를 추가한다. 기존 v1/v2/v3는 그대로 선택 가능하다. `codex-auto-review`는 공개 단가/동일 모델 근거가 확인되지 않아 null을 유지하며, 다른 모델 가격이나 0원으로 대체하지 않는다.
-
-현재 기본 참조 가격판은 [ADR 0012](../adr/0012-codeburn-reference-pricing.md)의 고정된 Codeburn 카탈로그를 사용한다. 위 v4의 정책과 기존 가격판은 보존하며, 새 가격판에서는 Codeburn의 명시적 `codex-auto-review → gpt-5.5` 별칭을 환산 기준으로 사용한다. 이 선택은 실제 모델의 동일성이나 실제 청구액을 입증하지 않는다. 원본 모델·시각·토큰은 보존하며, 검증되지 않은 토큰 의미·미보고 성분·카탈로그에 없는 모델의 null 정책은 유지한다.
+- 단가표는 공급자 공식 문서로 확인한 모델 단가를 우선하고, 나머지는 Codeburn 0.9.24 고정 카탈로그를 쓴다.
+  별칭(`codex-auto-review → gpt-5.5`)은 환산 기준의 선택이며 실제 모델 동일성을 뜻하지 않는다.
+  출처·기준 시각·평가 조건은 `pricing_version`의 불변 프로파일에서 확인한다.
+- Claude 캐시 생성은 5분 쓰기 단가로 평가한다. 실제 TTL 판정이 아니다.
+- 검증된 Claude Code(exclusive)와 Codex(inclusive) 사용량은 같은 비중복 토큰 성분으로 합산한다. 다른 의미 프로파일은
+  합산하지 않는다. 캐시·reasoning을 이중 합산하거나 미보고 성분을 0으로 채우지 않는다.
+- 단가표에 없는 모델, 미검증 토큰 의미, 필요한 성분의 누락은 null이다. 서로 다른 가격판이 섞이면 전체 금액은 null이다.
+- 저장된 사용량을 재평가하면 새 snapshot에서 읽는다. 계산 가능한 부분합은 [ADR 0011](../adr/0011-known-usage-subtotals.md)을 따른다.
