@@ -43,3 +43,17 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 
 MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. frontend 착수 시 증류해
 [`../product/`](../product/prd.md)로 옮긴다.
+
+## 사용 환산액
+
+[ADR 0008](../adr/0008-current-public-reference-valuation.md)에 따라 사용 환산액은 버전을 고정한 참조 단가표로 계산한
+Standard/global/USD 토큰 평가 금액이다. 실제 청구액·조직 계약액·벤더 보고 금액이 아니다.
+
+- 단가표는 공급자 공식 문서로 확인한 모델 단가를 우선하고, 나머지는 Codeburn 0.9.24 고정 카탈로그를 쓴다.
+  별칭(`codex-auto-review → gpt-5.5`)은 환산 기준의 선택이며 실제 모델 동일성을 뜻하지 않는다.
+  출처·기준 시각·평가 조건은 `pricing_version`의 불변 프로파일에서 확인한다.
+- Claude 캐시 생성은 5분 쓰기 단가로 평가한다. 실제 TTL 판정이 아니다.
+- 검증된 Claude Code(exclusive)와 Codex(inclusive) 사용량은 같은 비중복 토큰 성분으로 합산한다. 다른 의미 프로파일은
+  합산하지 않는다. 캐시·reasoning을 이중 합산하거나 미보고 성분을 0으로 채우지 않는다.
+- 단가표에 없는 모델, 미검증 토큰 의미, 필요한 성분의 누락은 null이다. 서로 다른 가격판이 섞이면 전체 금액은 null이다.
+- 저장된 사용량을 재평가하면 새 snapshot에서 읽는다. 계산 가능한 부분합은 [ADR 0011](../adr/0011-known-usage-subtotals.md)을 따른다.

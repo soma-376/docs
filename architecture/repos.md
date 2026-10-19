@@ -64,7 +64,8 @@ Claude Code 플러그인 마켓플레이스이자 Codex 스킬 소스. 스킬 4�
 Kotlin + Spring Boot, Gradle 멀티모듈. [`overview.md`](overview.md)의 **Auth Service** 자리를 맡는다.
 
 ```
-apps/enrollment-api/         Spring Boot 애플리케이션 (유일한 app)
+apps/enrollment-api/         enrollment API 애플리케이션
+apps/telemetry-ingest/       OTLP 수집·변환·보강·적재 조립 앱 (배포 전환 전)
 libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이그레이션
 ```
 
@@ -80,7 +81,9 @@ libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이�
   ([허브 ADR 0005](../adr/0005-single-app-telemetry-topology.md)). **ClickHouse 스키마 소유권**도 함께 이동한다.
   auth-proxy는 폐기되고 OTLP 인증은 이 레포의 Spring Security가 맡는다(ADR-0007,
   [허브 ADR 0001](../adr/0001-otlp-authentication-model.md)). 모듈 목록은 레포의 `docs/module-map.md`가 소유한다.
-  **이관은 아직 진행 전이다** — 현재 동작하는 파이프라인은 `ai-telemetry-pipeline`에 있다.
+  **코드 이관은 조립 앱까지 구현됐고, 배포 전환은 남아 있다**(PROJ-105 → PROJ-106).
+  현재 배포 트래픽은 `ai-telemetry-pipeline`의 auth-proxy·Collector·processor가 받는다.
+  목표 앱의 모듈 목록은 backend `docs/module-map.md`, 상태·재시도 계약은 허브 계약 §8을 따른다.
 - **소유하지 않음**: AWS 리소스·배포 설정(`infra`), 로컬 수신기·데몬·manifest 계약 스키마 파일(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
 - 모듈 경계·네임스페이스 규칙은 ADR-0008과 레포의 `docs/module-map.md`, 인증 계층은 ADR-0007.
 - 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 여전히 Flyway다.
