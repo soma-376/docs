@@ -4,7 +4,8 @@
 
 Accepted (backend ADR 0022·0023의 허브 채택 조건을 충족한다. overview I-5·I-6의 조직 설정 쓰기 주체와
 원천/캐시 구분을 대체한다. 사용자 JWT 키 원본·버전·파일 공급은 [ADR 0022](0022-user-jwt-key-provisioning.md)가
-보충하며 나머지 결정은 유효하다. 실제 AWS 배포·DB 권한·live E2E 완료를 뜻하지 않는다.)
+보충한다. [ADR 0023](0023-dev-backend-eks-only.md)이 dev ECS/EKS 병행 실행·이미지 비교·ECS CD·두 ALB 전제만
+부분 대체한다. 조회/명령·원천/캐시·라우팅·인증 결정은 유효하며 실제 AWS 배포·DB 권한·live E2E 완료를 뜻하지 않는다.)
 
 ## Context
 
@@ -15,14 +16,16 @@ Accepted (backend ADR 0022·0023의 허브 채택 조건을 충족한다. overvi
 
 Dashboard는 원천 RDS/ClickHouse를 읽고 별도 연결로 snapshot·알림 캐시를 쓴다.
 backend ADR 0022·0023은 이 캐시 예외와 배포 전 허브 채택을 요구한다.
-같은 앱이 ECS/EKS에서 동작하려면 `infra`와 설정·계정·artifact·라우팅 책임을 함께 확정해야 한다.
+최초 채택 때는 같은 앱을 ECS/EKS에서 실행하기 위해 `infra`와 설정·계정·artifact·라우팅 책임을 확정했다.
+dev 실행 환경은 이후 ADR 0023에서 EKS 전용으로 변경했다.
 이 ADR의 당사자는 `pulsemetry-backend`, `pulsemetry-frontend`, `infra`다.
 
 ## Decision
 
 1. Dashboard API는 `pulsemetry-backend/apps/dashboard-api`에 둔다. 기본 포트는 **8081**이며
-   동일 `linux/arm64` image를 ECS와 EKS가 사용한다. ECR `soma-376/dashboard-api`의
-   immutable `sha-<commit>` 및 승격 `dev` tag의 digest 대응과 실제 runtime digest를 기록한다.
+   `linux/arm64` image를 공급한다. **부분 대체(ADR 0023)** — dev는 EKS에서 실행하며 ECR
+   `soma-376/dashboard-api`의 commit·`sha-<commit>`·`dev` 태그와 build digest 및 실제 Pod imageID를 기록한다.
+   태그는 재실행으로 이동할 수 있고 immutable 식별자는 digest다.
 2. 원천을 읽는 dashboard와 조직 관리 명령을 쓰는 enrollment를 분리한다.
    전체 path·method·OPTIONS 소유는 [dashboard 계약 §2](../contracts/dashboard-api.md#2-공개-경로와-method-소유)가 기준이다.
    `auth/me`, onboarding·invitations GET과 기존 관리 쓰기는 enrollment에 남긴다.
@@ -40,11 +43,12 @@ backend ADR 0022·0023은 이 캐시 예외와 배포 전 허브 채택을 요�
    enrollment 관리자 토큰과 raw S3 권한은 dashboard에 전달하지 않는다.
    `PULSEMETRY_USER_AUTH_PUBLIC_KEY_FILE`은 kid=local의 값이며 임의 kid는 명시적 맵으로 배포한다.
    키 원본은 [ADR 0022](0022-user-jwt-key-provisioning.md)의 환경별 개인키·공개키 고정 Secret 두 개다.
-   dashboard는 공개키 Secret만 받아 파일로 검증하고, dev ECS/EKS는 같은 공개키 원본·버전을 사용한다.
-7. backend는 앱 이미지 공급과 기존 task definition에 대한 ECS CD를 맡는다.
-   infra CDK는 ECS service/task·AWS/EKS 자원·ALB/TG/WAF·runtime 주입을, infra Helm은 Kubernetes workload를 맡는다.
-   EKS는 같은 artifact digest로 수동 배포한다. backend CD가 CDK/Helm이나 task definition 등록을 수행하지 않는다.
-8. 두 ALB는 명시 path+method로 D/E를 나누고 shared URI의 preflight는 OPTIONS+
+   dashboard는 공개키 Secret만 받아 파일로 검증한다. dev EKS는 ADR 0023에 따라 기존 공개키 원본·선택 버전을 유지한다.
+7. **대체됨(ADR 0023, dev 배포 범위)** — backend dev CI는 세 앱의 ARM64 이미지 공급과 태그 승격을 맡는다.
+   infra CDK는 AWS/EKS 자원·ALB/TG/WAF·IAM을, infra Helm과 운영자는 Kubernetes workload·runtime 공급 및
+   확인한 digest의 수동 배포를 맡는다. backend CI에 ECS CD·CDK/Helm 배포·task definition 등록을 넣지 않는다.
+   prod와 frontend의 ECS 계약은 이 대체 범위 밖이다.
+8. **부분 대체(ADR 0023)** — dev EKS ALB는 명시 path+method로 D/E를 나누고 shared URI의 preflight는 OPTIONS+
    `Access-Control-Request-Method`로 구분한다. public default는 404, health는 내부 target group 확인용이다.
    WAF 앱 내용 검사에는 dashboard 경로를 포함하고 기존 등록 rate 범위와 OTLP 예외는 유지한다.
 
@@ -54,7 +58,7 @@ backend ADR 0022·0023은 이 캐시 예외와 배포 전 허브 채택을 요�
   배포 수치를 local 프로필의 편의값으로 대신하지 않는다.
 - source readOnly 옵션은 권한을 대신하지 않는다. 원천 SELECT 계정을 cache/master 계정으로 대체하지 않는다.
 - 별도 캐시는 수집 원천과 다르다. Signal 원천의 Enricher 단일 쓰기, raw 조회/재처리 제한과 비용 이원화 결정은 유효하다.
-- NodePort 숫자는 PROJ-223 구현에서 확정한다. SG/TG/output/Helm Service 값이 일치하기 전에는 배포하지 않는다.
+- NodePort 숫자는 infra의 PROJ-223 구현이 소유한다. SG/TG/output/Helm Service 값이 일치하기 전에는 배포하지 않는다.
 - JWT 키 생성은 명시적 초기화에서만 수행한다. 키 파일 설정·배포 버전·보존·교체/롤백은 ADR 0022를 따르며,
   공개키를 앱 이미지에 포함하거나 일반 재배포에서 새 키를 생성하지 않는다.
 
@@ -84,7 +88,7 @@ backend ADR 0022·0023은 이 캐시 예외와 배포 전 허브 채택을 요�
 
 - frontend·backend·infra가 같은 path/method 표와 설정 인터페이스를 사용한다.
 - dashboard는 원천 변경 권한 없이 snapshot·알림 캐시를 독립적으로 관리한다.
-- ECS/EKS를 같은 image digest로 비교하고 배포 소유자를 분명히 할 수 있다.
+- 공급된 ARM64 image digest와 실제 실행 digest를 비교하고 배포 소유자를 분명히 할 수 있다.
 
 ### Negative
 
@@ -95,8 +99,9 @@ backend ADR 0022·0023은 이 캐시 예외와 배포 전 허브 채택을 요�
 
 ## Follow-up
 
-- PROJ-220: infra ADR/런북에 ECS·EKS 배포 순서, 주입·TG/WAF와 설치/기능 증거를 반영한다.
-- PROJ-221: ECS dashboard service/task를 추가한다. PROJ-222: runtime·계정·권한 전달을 구현한다.
+- **대체됨(ADR 0023, dev 실행·배포 부분)** — PROJ-220의 ECS·EKS 병행 런북과 PROJ-221의 ECS dashboard
+  service/task 도입은 과거 작업 경계다. 현행 dev 설치·철거 절차는 infra EKS·철거 런북을 따른다.
+- PROJ-222의 공통 runtime·계정·권한 전달 책임은 유지한다.
 - PROJ-223: Helm workload를 추가하고 dashboard NodePort를 확정한다. PROJ-224: ALB/TG/WAF 라우팅을 반영한다.
 - PROJ-225: 네 계정 권한과 인증·snapshot·CORS·복구 live 증거를 별도 배포 검증으로 확보한다.
 

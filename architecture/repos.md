@@ -32,7 +32,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 | [`pulsemetry-backend`](#pulsemetry-backend) | Kotlin / Spring Boot / Gradle | enrollment·telemetry-ingest·dashboard 앱, 원천/캐시 DDL | `develop` | 레포 인덱스 |
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
-| [`infra`](#infra) | AWS CDK v2 (TS) / Helm | **모든 AWS 리소스**, prod collector·Kubernetes 배포 설정 | `develop` | 레포 인덱스 |
+| [`infra`](#infra) | AWS CDK v2 (TS) / Helm / Terraform | **모든 AWS 리소스**, prod collector·Kubernetes·별도 frontend 배포 설정 | `develop` | 레포 인덱스 |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -88,7 +88,9 @@ libs/enrollment-persistence/ 원천 JPA · 리포지토리 · enrollment/telemet
   키 원본·최초 생성·버전·교체의 공통 규칙은 [허브 ADR 0022](../adr/0022-user-jwt-key-provisioning.md)를 따른다.
 - **파이프라인 병합 결정**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md),
   [ADR 0005](../adr/0005-single-app-telemetry-topology.md))에 따른 telemetry-ingest 앱이 구현돼 있다.
-  배포된 환경의 전환 여부는 앱 코드 존재와 별도 증거다. prod Collector 설정은 infra에 남는다.
+  dev 실행 환경은 [ADR 0023 — dev 백엔드 EKS 전용](../adr/0023-dev-backend-eks-only.md)을 따른다. prod Collector 설정은 infra에 남는다.
+- backend dev CI는 세 앱의 `linux/arm64` 이미지를 빌드해 ECR에 게시한다. 확인한 digest로 EKS에 수동 배포하는 책임은 infra에 있다.
+  backend dev CI는 ECS 검사·재배포, CDK/Helm 실행이나 task definition 등록을 수행하지 않는다.
 - **소유하지 않음**: AWS/CDK·Kubernetes/Helm 배포 설정(`infra`), dashboard 화면/BFF(`pulsemetry-frontend`),
   로컬 수신기·데몬·manifest JSON Schema(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
 - 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 Flyway다.
@@ -127,7 +129,8 @@ contracts/*.schema.json     ★ manifest·envelope JSON Schema — 계약의 기
 
 ## ai-telemetry-pipeline
 
-앱 2개가 한 레포에 있다. [`overview.md`](overview.md)의 **Collector 뒤편 — Masker·Adapter·Enricher** 자리.
+기존 파이프라인의 앱 2개가 한 레포에 있다. 아래는 auth-proxy·processor 구현의 경계이며,
+dev의 실행 경로는 backend telemetry-ingest다([ADR 0023](../adr/0023-dev-backend-eks-only.md)).
 
 ```
 apps/auth-proxy/           TypeScript. OTLP 요청의 토큰 검증 → x-pulsemetry-* 4헤더 부여
@@ -138,7 +141,8 @@ otel-collector-config.yaml ★ dev(in-repo) collector 설정 — 배포 설정�
 sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 — backend Flyway가 진실원)
 ```
 
-- **소유**: 토큰 검증과 신원 헤더 부여, OTLP 정규화 규칙, ClickHouse `enriched_events` 적재.
+- **기존 구현의 소유**: 토큰 검증과 신원 헤더 부여, OTLP 정규화 규칙, ClickHouse `enriched_events` 적재.
+  prod ECS에 남는 processor 구현과 collector 배포 계약은 dev ECS 제거로 바꾸지 않는다.
 - **소유하지 않음**: 토큰 **발급**(backend), enrollment 스키마 **DDL의 진실원**(backend Flyway),
   **배포 collector 설정**(infra).
 - `sql/rds/schema.sql`은 dev 편의용 부트스트랩이다. 스키마를 바꿔야 하면 backend Flyway를 고친다.
@@ -146,36 +150,41 @@ sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 
 - **이 레포는 backend로 병합된다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
   파이프라인 로직 전체가 Kotlin으로 재작성돼 `pulsemetry-backend`로 옮겨가고, auth-proxy는 폐기되며
   ClickHouse 스키마 소유권도 함께 이동한다. **이관이 끝나면 이 레포는 아카이브된다.**
-  그전까지 위의 소유 서술은 그대로 사실이며, 동작하는 파이프라인은 여기에 있다.
-- 알려진 상태: 레포 테스트 0개(CI는 auth-proxy typecheck/build만).
-  이 공백을 메우는 특성화 테스트 확보가 이식 착수의 선행 조건이다(허브 ADR 0004 Follow-up).
+  dev의 코드·배포 선언 전환과 prod 실행·레포 아카이브 완료는 별개다.
+- 과거 조사에서는 레포 테스트 0개(CI는 auth-proxy typecheck/build만)로 기록됐다.
+  특성화 테스트 확보 요구는 허브 ADR 0004 Follow-up에 남기며, 이 수치를 현재 테스트 결과로 사용하지 않는다.
   README·`docs/`의 코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.
   다만 `docs/normalizer.md`·`docs/diagnostics.md`의 **필드 단위 정의는 아직 코드와 대조하지 않았다.**
 
 ## infra
 
-AWS CDK v2 (TypeScript) **단일 인프라 레포**. ADR-0009에 따라 인프라는 여기서만 관리한다.
+AWS CDK v2 (TypeScript)·Helm과 별도 frontend Terraform을 담는 **단일 인프라 레포**다.
+ADR-0009에 따라 인프라는 여기서만 관리하며 CDK와 frontend Terraform은 같은 리소스를 공동 관리하지 않는다.
 
 ```
 lib/common/  환경 무관 계약 상수 + 순수 헬퍼
 lib/prod/    운영 4스택 + synthProd()
-lib/dev/     dev 4스택 + synthDev()
+lib/dev/     dev Network·Data·Edge·EKS 4스택 + synthDev()
 lib/cicd/    DeployStack + synthCicd()   (배포 역할 4개 — ADR-0024)
-config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
+helm/dev/   dev Kubernetes 선언과 수동 배포 설정
+frontend/   CDK와 독립된 frontend Terraform
+config/otel-collector.yaml   ★ prod ECS collector 설정
 ```
 
 - **소유**: 모든 AWS 리소스, **prod 배포용 collector 설정**, 배포 역할과 Kubernetes/Helm 배포 설정.
-  dashboard의 ECS task/service·runtime 주입·ALB/TG/WAF, EKS AWS 자원·Helm workload는 infra가 소유한다.
+  dev는 CDK가 AWS 자원·ALB/TG/WAF·IAM을, Helm이 workload·runtime 파일 공급·수동 배포를 소유한다.
+  Auto Mode는 노드 생성·교체를 소유한다. prod backend ECS와 별도 frontend Terraform ECS는 유지한다.
   원천/캐시 DB·schema·역할별 계정/권한은 [dashboard 계약 §3](../contracts/dashboard-api.md#3-네-저장소-연결과-ddl-책임)을 따른다.
 - 사용자 JWT의 고정 Secret 두 개와 최초 등록·보존·IAM·배포 버전 선택·runtime 파일 공급을 소유한다
-  ([허브 ADR 0022](../adr/0022-user-jwt-key-provisioning.md)). dev ECS/EKS는 같은 원본을 사용한다.
-  전달 구현은 infra ADR 0030에 두며 일반 재배포에서 키를 재생성하지 않는다.
-- **소유하지 않음**: 앱 코드. 앱 레포 CI는 이미지 빌드 → ECR push → `ecs update-service --force-new-deployment`까지만 한다.
-  **태스크 정의를 바꾸려면 반드시 이 레포를 경유한다.**
+  ([허브 ADR 0022 — 사용자 JWT 키 공급](../adr/0022-user-jwt-key-provisioning.md)). dev EKS는 기존 원본과 명시한 `VersionId`를 유지한다.
+  EKS 파일 공급은 infra ADR 0030·0035를 따르며 일반 재배포에서 키를 재생성하지 않는다.
+- **소유하지 않음**: 앱 코드. backend dev CI는 이미지 빌드·ECR 게시까지만 맡는다.
+  EKS 수동 배포와 복구는 infra 런북을 따르며 앱 CI에 EKS 자동 배포 권한을 추가하지 않는다.
+  prod의 기존 ECS 재배포 계약은 유지하고, **ECS 태스크 정의 변경은 이 레포를 경유한다.**
 - 폴더 의존 방향은 `prod → common`, `dev → common`, `cicd → common` **단방향**. `prod ↔ dev` 상호 참조 금지.
 - region은 `ap-northeast-2`. account는 `CDK_DEFAULT_ACCOUNT`에서만 주입하고 코드·문서에 기록하지 않는다.
 - **`AGENTS.md`가 이 레포의 실질 핸드오프 문서다.** 3장(불변 규칙)과 5장(남은 작업)을 먼저 읽는다.
-- ADR 번호 `0020`은 로그 그룹 정책용으로 **예약**돼 있다. 현재 번호는 infra ADR 인덱스가 기준이다.
+- ADR 번호는 infra ADR 인덱스가 기준이다. 병행 브랜치에서 번호가 겹친 결정은 제목·파일 링크로 구분한다.
 
 ## rdb-schema
 
@@ -190,7 +199,8 @@ config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
 
 > **superseded by `ai-telemetry-pipeline`. 신규 작업 금지.**
 
-초기 collector 실험 레포다. 현재 파이프라인은 `ai-telemetry-pipeline`이고 배포 설정은 `infra`가 소유한다.
+초기 collector 실험 레포다. 기존 역할은 `ai-telemetry-pipeline`으로 이어졌고, dev 실행 경로는 backend telemetry-ingest다.
+prod collector 배포 설정은 `infra`가 소유한다.
 여기 있는 `otel-collector-config.yaml`·`teams.json`은 어느 환경에도 반영되지 않는다.
 GitHub archive 처리는 팀 확인 후 진행한다.
 
@@ -217,6 +227,12 @@ org 프로필 레포.
 ## 현재 상태
 
 `pulsemetry-frontend`와 backend의 dashboard-api는 구현돼 있다. [dashboard runtime·배포 계약](../contracts/dashboard-api.md)은
-이 구현의 레포 경계를 채택한다. 실제 DB 권한·이미지 digest 공급·ECS/EKS 서비스 동작은 별도 배포 검증이 필요하다.
-사용자 JWT의 파일 기반 로더는 backend에 존재한다. ADR 0022의 키 원본·버전 공급 결정은 채택됐지만
-최초 키 생성·Secret 등록·CDK/Helm 파일 공급·live 교체/롤백은 별도 구현·검증이다.
+이 구현의 레포 경계를 채택한다. dev EKS 전용 구성과 이미지 공급 책임은 [ADR 0023](../adr/0023-dev-backend-eks-only.md)을 따른다.
+
+- **로컬 구현·검증**: PROJ-248은 dev ECS 선언을 제거하고 기존 EKS·데이터·키 원본을 보존했다.
+  build·합성·Jest·Helm·configtree 결과는 [infra 검증 기록](../../infra/docs/runbooks/proj248-local-validation.md)에 있다.
+  PROJ-249의 backend 로컬 workflow는 세 앱 이미지 게시까지만 수행하며, 해당 workflow의 mock 테스트가 공급 경계를 검사한다.
+  backend의 파일 기반 RS256 로더와 infra의 EKS 버전 고정 파일 공급 구현은 존재한다.
+- **실환경 검증**: AWS ECS 철거·수동 Snapshot·DB 연결 수 개선·EKS 기능 검증은 위 로컬 증거로 완료되지 않는다.
+  실제 이미지 digest·DB 권한·키 초기화·CSI/Pod Identity 공급·인증과 키 교체/롤백은 별도 확인한다.
+  키 교체는 전체 verifier의 공개키 겹침 → signer 전환 → 마지막 구 발급 후 330초 → 구 공개키 제거 순서를 유지한다.

@@ -18,9 +18,13 @@ E2E 검증에서 확인된 차단 결함 4건 중 3건이 "구간 내부의 버�
 | 계약 | 당사자 | 상태 |
 |---|---|---|
 | [`enrollment-api.md`](enrollment-api.md) | `telemetryctl` ↔ `pulsemetry-backend` | 확정 |
-| [`telemetry-ingest.md`](telemetry-ingest.md) | `telemetryctl` (·AI tool) → `ai-telemetry-pipeline` (·`infra`) | 확정 — 미해결 배선 1건(B3) |
-| [`data-model.md`](data-model.md) | `pulsemetry-backend` ↔ `ai-telemetry-pipeline` (·`rdb-schema`) | 확정 |
-| [`dashboard-api.md`](dashboard-api.md) | `pulsemetry-frontend` ↔ `pulsemetry-backend` ↔ `infra` | 확정 — 조회/명령·runtime·배포 책임 (ADR 0021), 사용자 JWT 키 공급 (ADR 0022), live 배포 별도 |
+| [`telemetry-ingest.md`](telemetry-ingest.md) | dev: `telemetryctl` → `pulsemetry-backend` (·`infra`); 과거 경로: `ai-telemetry-pipeline` | 변경 중 — dev EKS 실행 경로·B3 전제 정리 (ADR 0023); 실제 배선·기능 검증 별도 |
+| [`data-model.md`](data-model.md) | `pulsemetry-backend` ↔ 읽기 소비자 (`telemetry-ingest`·기존 `ai-telemetry-pipeline`), 배포는 `infra`, 설계도는 `rdb-schema` | 변경 중 — dev enrollment Flyway 선행·소비자 실행 경계 (ADR 0023) |
+| [`dashboard-api.md`](dashboard-api.md) | `pulsemetry-frontend` ↔ `pulsemetry-backend` ↔ `infra` | 변경 중 — dashboard ADR 0021·JWT ADR 0022 유지, dev 배포 부분은 ADR 0023으로 대체; live 배포 별도 |
+
+PROJ-250의 세 계약은 [dev EKS 전용 ADR 0023](../adr/0023-dev-backend-eks-only.md)에 따라 정합화한다.
+PROJ-248·249의 관련 구현과 계약이 머지되기 전에는 변경 중으로 둔다. 과거 조사 항목은 해당 문서의
+적용 범위를 함께 읽으며, 문서 갱신이나 이미지 게시 성공을 live E2E 완료로 해석하지 않는다.
 
 ## 규칙
 

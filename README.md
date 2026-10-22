@@ -30,7 +30,7 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 | [`product/roadmap.md`](product/roadmap.md) | 마일스톤 골격 | 골격 |
 | [`architecture/overview.md`](architecture/overview.md) | 컴포넌트 지도·데이터 흐름·아키텍처 불변식 | 증류 완료 (원본 `archive/SA.md`) |
 | [`architecture/repos.md`](architecture/repos.md) | 레포별 역할·경계·현재 상태 | 조사 기반 신규 |
-| [`contracts/`](contracts/README.md) | 레포 간 계약 4건 | enrollment·ingest·data-model·dashboard 확정 |
+| [`contracts/`](contracts/README.md) | 레포 간 계약 4건 | enrollment 확정; ingest·data-model·dashboard의 dev 실행·배포 계약 변경 중 (ADR 0023) |
 | [`adr/README.md`](adr/README.md) | 크로스레포 ADR 인덱스 + 전 레포 카탈로그 | 크로스레포 결정·타 브랜치의 번호 예약 안내 |
 | [`glossary.md`](glossary.md) | 도메인 용어 | 골격 |
 | [`onboarding.md`](onboarding.md) | 클론 배치·에이전트 셋업·첫 PR | 완성 |
@@ -45,6 +45,31 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 3. **기존 40여 건을 이관하는 이득은 검색 편의뿐이고, 대가는 링크 파손이다.** 검색은 이 허브의 카탈로그와 `adr` 스킬이 해결한다.
 
 크로스레포 결정만 반대로 중앙이 소유한다. 단일 레포에 두면 다른 레포에서 비가시적이고 소유가 모호해지기 때문이다.
+
+## PROJ-250 현재 상태와 main 통합 인계
+
+[dev EKS 전용 ADR 0023](adr/0023-dev-backend-eks-only.md)은 infra PROJ-248의 로컬 구현과
+backend PROJ-249의 로컬 이미지 공급 workflow를 기준으로 한다. PROJ-248은 인프라 코드,
+PROJ-249는 backend ECS 조회·재배포 제거, PROJ-250은 이 허브의 계약 정합화를 담당한다.
+관련 구현과 계약의 머지 전까지 세 계약은 변경 중이며, backend·infra 담당자의 교차 검토 대상이다.
+
+이 작업은 PROJ-228의 `2b3ca08`을 잇는 후속 변경이다. 최신 원격 main 통합·ADR 번호 충돌 정리와
+기존 미커밋 수정은 포함하지 않는다. 로컬 구현·검증은 실제 이미지 게시·AWS 철거·Snapshot·EKS 기능 검증이나
+DB 연결 한도 문제 해결을 증명하지 않는다. 실제 철거는 [infra 런북](../infra/docs/runbooks/dev-ecs-retirement.md),
+수동 설치·운영은 [EKS 런북](../infra/docs/runbooks/dev-eks-manual-deployment.md)을 따른다.
+현재 infra 문서의 허브 정합화 PROJ-249 인계 표기는 이 작업에서 수정하지 않았으며, 담당 범위는 위 구분을 따른다.
+
+후속 main 통합에서는 파일 전체를 덮어쓰지 않고 다음 변경을 보존한다. 로컬 `origin/main`은 최신 원격 상태의 근거로 쓰지 않는다.
+
+- 원격 `0022-frontend-ecs-image-delivery.md`와 이 브랜치 `0022-user-jwt-key-provisioning.md`는 다른 결정이다.
+  기존 파일명·링크를 보존하고 번호와 제목을 함께 인용한다. frontend ECS 배포는 dev 백엔드 제거 대상이 아니다.
+- 원격 dashboard 계약의 사용 환산액 절: 가격판·토큰 의미·null 처리·관측 부분합(ADR 0008·0011).
+- 원격 telemetry-ingest 계약의 상태 코드·재시도 §8과 M6·M11·M14 갱신.
+- 원격 data-model 계약의 LocalSeeder/Flyway 구분과 telemetry-ingest 읽기 소비자·Flyway 미실행 설명.
+- 원격 ADR 인덱스의 0006·0007(`Proposed`)·0008·0011·frontend 0022와 각각의 상태.
+
+이 목록은 이번 조사에서 확인한 통합 주의점이다. main 통합 시 원격을 다시 확인하며, PROJ-250 완료를
+main 통합 완료로 기록하지 않는다.
 
 ## 규칙
 

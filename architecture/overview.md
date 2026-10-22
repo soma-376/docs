@@ -117,7 +117,7 @@ flowchart LR
 
 - **Local Store는 서버 구성요소가 아니다.** 사용자 기기의 저장소이며 조직 관리자가 보는 데이터베이스에 포함되지 않는다.
 - **인증은 두 자리로 나뉜다.** 요청마다 토큰이 유효한지 보는 것은 각 경로의 애플리케이션 인증 계층이고
-  (OTLP 경로는 현행 auth-proxy → backend Spring Security 이관 예정 — [허브 ADR-0001](../adr/0001-otlp-authentication-model.md) · backend ADR-0007),
+  (dev OTLP는 telemetry-ingest의 Spring Security가 담당 — [허브 ADR-0001](../adr/0001-otlp-authentication-model.md) · backend ADR-0007),
   계정을 만들고 초대 코드로 설치 인스턴스에 토큰을 발급하는 것은 Auth Service다.
   그래서 Auth Service는 미들웨어가 아니라 Dashboard API와 같은 레이어의 서비스이며, 데스크탑을 상대하는 서버다.
 - **토큰이 유효하다는 것과 그 주체가 이 자원에 접근해도 된다는 것은 다르다.** 후자는 각 서비스의 security layer가 판정한다.
@@ -126,12 +126,16 @@ flowchart LR
   조직별 계약 단가는 User Database에 있고 조회 시에만 쓰인다.
 - **시나리오 카탈로그는 가용성을 담지 않는다.** 가용성은 Dashboard API가 조회 시 판정한다(I-14).
 - **Observability에 남는 것은 운영 로그이지 감사 로그가 아니다.** 감사 로그는 저장 대상·저장소가 정해지지 않아 범위 밖이다.
-- **인증 종결 지점은 애플리케이션 계층이다.** 경계(ALB)는 TLS 종단과 라우팅만 하고, 별도 auth 서버(외부 IdP)를 두지 않는다
+- **OTLP 토큰 검증은 애플리케이션 계층에서 끝난다.** OTLP 경로의 ALB는 TLS 종단과 라우팅만 하고 IdP 인증을 수행하지 않는다
   ([허브 ADR-0001](../adr/0001-otlp-authentication-model.md)이 infra ADR-0008의 ALB 인증안을 대체했다).
+  사람의 외부 IdP를 통한 OIDC 로그인과 API의 자체 JWT 검증은 별개이며, backend의 [사용자 인증 운영](../../pulsemetry-backend/docs/user-auth-operations.md)을 따른다.
 - **사용자 JWT 키는 별도 운영 원본이다.** [ADR 0022](../adr/0022-user-jwt-key-provisioning.md)에 따라
   환경별 고정 Secret 두 개를 `aws/secretsmanager`로 암호화하고 명시적 초기화에서 생성한 키쌍을 버전으로 관리한다.
   infra는 enrollment에 개인키·공개키 파일, dashboard에 공개키 파일만 공급하며 수집 경로에 JWT Secret 권한을 주지 않는다.
-  dev ECS/EKS는 같은 원본을 소비한다. 키 교체는 공개키 겹침→signer 전환→마지막 구 발급 후 330초→구 공개키 제거 순서다.
+  dev EKS는 기존 원본과 명시한 `VersionId`를 유지한다. 키 교체는 공개키 겹침→signer 전환→마지막 구 발급 후 330초→구 공개키 제거 순서다.
+- **dev 백엔드는 EKS만 사용한다.** [ADR 0023](../adr/0023-dev-backend-eks-only.md)에 따라 backend CI는 세 앱의 ARM64 이미지를
+  ECR에 게시하고, infra가 확인한 digest로 Helm 수동 배포를 수행한다. CDK는 AWS 자원, Helm은 Kubernetes 선언,
+  Auto Mode는 노드 생성·교체를 소유한다. prod backend ECS와 별도 frontend Terraform ECS는 이 결정의 대상이 아니다.
 
 ### 가공은 두 단계, 비용은 이원화
 
@@ -171,9 +175,10 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - 프롬프트는 정책에 따라 이 경로를 탄다. Privacy가 꺼져 있으면 데몬이 전송 전에 제거하므로 서버에 도달하지 않는다.
 - Masker가 어느 조직의 규칙을 적용할지는 함께 넘어온 인가 정보로 정한다.
 
-위 네 이름은 **논리 노드**다. 실제 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)와 그 계약은
-[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다. 노드 `Collector`와 그 컨테이너는
-다른 것이다([`../glossary.md`](../glossary.md)).
+위 네 이름은 **논리 노드**다. dev에서는 backend telemetry-ingest 한 앱의 모듈로 실행한다.
+이전 auth-proxy → OTel Collector 컨테이너 → processor 경로와 dev EKS 경로의 범위는
+[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에서 구분한다. prod의 기존 ECS collector·processor 계약은 유지한다.
+노드 `Collector`와 OTel Collector 컨테이너는 다른 것이다([`../glossary.md`](../glossary.md)).
 
 ### B — 대시보드 조회 (읽기)
 
@@ -183,7 +188,8 @@ Web Browser → API Gateway → Dashboard API → Signal Database
                                           → Dashboard Cache (snapshot manifest/payload)
 ```
 
-Dashboard API의 소재·별도 캐시·배포 책임은 [ADR 0021](../adr/0021-dashboard-runtime-and-deployment-contract.md)을 따른다.
+Dashboard API의 소재·별도 캐시는 [ADR 0021](../adr/0021-dashboard-runtime-and-deployment-contract.md),
+dev EKS 배포 책임은 [ADR 0023](../adr/0023-dev-backend-eks-only.md)을 따른다.
 원천은 읽고 자기 캐시에만 쓰며, frontend의 관리 명령은 enrollment-api로 보낸다.
 
 사용량 수치(Signal)와 조직 구조(User)를 조인해야 "부서별·팀별 비용"이 나온다.
@@ -305,19 +311,23 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 
 ## 5. 목표 구조 대비 현재 구현 (요약)
 
-이 문서는 목표 구조다. 아래 표는 관련 구현과 배포 증거의 차이를 모은다. 과거 파이프라인 조사 항목의 최신 정합화는 별도다. 레포별 상세는 [`repos.md`](repos.md).
+이 문서는 목표 구조다. 아래 표는 로컬 구현·검증과 실환경 증거를 구분한다.
+과거 파이프라인 조사 결과는 dev EKS의 현재 기능 판정으로 사용하지 않는다. 레포별 상세는 [`repos.md`](repos.md).
 
 | 목표 컴포넌트 | 현재 |
 |---|---|
-| Masker (조직별 규칙 2차 마스킹) | collector의 `redaction`(전역 고정 패턴)으로만 부분 구현. 조직별 규칙 참조 없음 |
-| Raw Signal Object Storage | 파일 아카이브로 대체. **write-only** — 재처리 리더가 없다 |
-| Adapter의 공시 단가 환산 | placeholder 단가표 |
+| Masker (조직별 규칙 2차 마스킹) | 과거 collector 조사에서는 `redaction` 전역 패턴만 확인했다. dev telemetry-ingest의 정책 집행·실환경 검증은 그 조사와 별도 |
+| Raw Signal Object Storage | 과거 collector는 파일 아카이브를 썼다. dev 선언은 telemetry-ingest → S3이며, 재처리·복구 완료를 뜻하지 않음 |
+| Adapter의 공시 단가 환산 | 과거 파이프라인 조사의 placeholder 단가표 기록이다. 이번 실행 환경 변경에서 환산 정책·구현을 판정하지 않음 |
 | Auth Service | backend enrollment-api에 계정·서비스 토큰·설치·관리 명령이 구현돼 있다. 배포된 인증 동작은 별도 검증 |
-| Dashboard API | backend `apps/dashboard-api`와 `pulsemetry-frontend` 구현 존재. runtime 계약은 ADR 0021, AWS 서비스/DB 권한/live 기능 증거는 별도 |
-| Runtime key supply | 파일 기반 RS256 로더는 backend에 존재. ADR 0022의 원본·버전·파일 공급은 채택된 결정이며 최초 키 생성·Secret 등록·CDK/Helm 공급·live 교체/롤백은 별도 작업 |
-| ~~Identity Provider~~ (목표 구조에서 제거 — 허브 ADR-0001) | 인증은 앱 계층: 현행 auth-proxy(OTLP), backend Spring Security로 이관 예정. Cognito 구축 코드는 의도적 잔존(제거 예정) |
+| Dashboard API | backend `apps/dashboard-api`와 `pulsemetry-frontend` 구현 존재. runtime 계약은 ADR 0021, dev EKS 배포는 ADR 0023. 실제 DB 권한·live 기능 증거는 별도 |
+| Runtime key supply | backend RS256 파일 로더와 infra EKS의 버전 고정 파일 공급 구현이 존재한다. 최초 키 생성·Secret 등록·실제 공급·live 교체/롤백은 로컬 검증과 별도 |
+| dev 실행·배포 | PROJ-248은 EKS 전용 인프라를, PROJ-249는 backend 이미지 게시 workflow를 로컬에 구현했다. AWS ECS 철거·Snapshot·EKS E2E 완료 증거는 별도 |
+| Identity Provider (사람 로그인) | enrollment-api는 외부 OIDC 제공자와 연동하고 dashboard는 자체 JWT·세션을 검증한다. dev OTLP 토큰 검증은 telemetry-ingest가 맡는다. prod의 기존 Cognito 구축 코드는 이번 dev ECS 제거의 대상이 아님 |
 
-**I-2 · I-8 · 흐름 D는 아직 구조적으로 미충족**이다. MVP 진행 단계로 보면 자연스럽지만, 미충족 상태임을 문서가 감추지 않는다.
+과거 조사에서 **I-2 · I-8 · 흐름 D의 미충족**이 기록됐다. 이번 dev 실행 환경 변경은 해당 항목의 해소를 검증하지 않는다.
+PROJ-248의 build·합성·Jest·Helm·configtree 결과는 [infra 검증 기록](../../infra/docs/runbooks/proj248-local-validation.md)을 따른다.
+로컬 테스트·readiness만으로 인증·수집·조회·키 공급·복구 또는 DB 연결 문제 해결을 완료했다고 기록하지 않는다.
 
 ---
 

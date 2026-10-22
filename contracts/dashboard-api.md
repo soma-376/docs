@@ -3,7 +3,7 @@
 | 항목 | 내용 |
 |---|---|
 | 당사자 | `pulsemetry-frontend` ↔ `pulsemetry-backend` ↔ `infra` |
-| 상태 | 확정 — runtime·저장소·배포 책임은 [ADR 0021](../adr/0021-dashboard-runtime-and-deployment-contract.md), 사용자 JWT 키 공급은 [ADR 0022](../adr/0022-user-jwt-key-provisioning.md) |
+| 상태 | 변경 중 — runtime·저장소 책임은 [dashboard ADR 0021](../adr/0021-dashboard-runtime-and-deployment-contract.md), 키 공급은 [JWT ADR 0022](../adr/0022-user-jwt-key-provisioning.md), dev EKS 전용 배포는 [ADR 0023](../adr/0023-dev-backend-eks-only.md). PROJ-248·249 구현과 계약 반영 후 확정 |
 | API 구현 | `pulsemetry-backend/apps/dashboard-api` (`:apps:dashboard-api`, 기본 포트 **8081**) |
 
 이 문서는 조회/명령 소유, runtime 설정과 배포 전제를 정한다. HTTP 필드·오류·페이지네이션 상세는
@@ -126,7 +126,7 @@ OIDC 두 경로는 `OidcLoginConfig`의 전용 security chain이 처리한다.
 
 ### 2-4. edge·OPTIONS·health 경계
 
-- ECS와 EKS ALB 모두 같은 표를 적용한다. `GET /api/v1/organizations/*`처럼 조직 조회를
+- dev EKS ALB에 이 표를 적용한다. prod와 frontend의 별도 ECS 배포를 이 표로 변경하지 않는다. `GET /api/v1/organizations/*`처럼 조직 조회를
   통째로 D에 넘기지 않고, 명시 path와 method를 조합한다. 미등록 path/method의 default는 **404**다.
 - 공유 URI의 preflight는 `OPTIONS`만으로 소유자를 고를 수 없다. path + OPTIONS +
   `Access-Control-Request-Method`로 나눈다. 예: `O/teams` GET preflight는 D, POST preflight는 E다.
@@ -177,7 +177,7 @@ infra는 배포 환경의 주소·계정·측정한 운영 한도를 전달하�
 
 | 환경변수 | property | 기본값 / 검증·전달 책임 |
 |---|---|---|
-| `PULSEMETRY_DASHBOARD_PORT` | `server.port` | 8081; ECS container port와 Helm targetPort 일치 |
+| `PULSEMETRY_DASHBOARD_PORT` | `server.port` | 8081; dev EKS의 컨테이너 포트와 Helm targetPort 일치 |
 | `PULSEMETRY_USER_AUTH_ENABLED` | `pulsemetry.user-auth.enabled` | false; 실제 인증 조회를 제공하려면 true |
 | `PULSEMETRY_USER_AUTH_ISSUER` | `pulsemetry.user-auth.issuer` | 빈 값; enabled=true일 때 발급 서버와 일치하는 nonblank 값 |
 | `PULSEMETRY_USER_AUTH_AUDIENCE` | `pulsemetry.user-auth.audience` | 빈 값; enabled=true일 때 발급 서버와 일치하는 nonblank 값 |
@@ -235,7 +235,7 @@ YAML 또는 `SPRING_APPLICATION_JSON`으로 명시한다. 회전 기간에는 �
 
 | 항목 | 공통 계약 |
 |---|---|
-| 원본 | 환경별 개인키·공개키 **고정 ARN 두 개**의 Secrets Manager Secret. `aws/secretsmanager` 암호화. dev ECS/EKS는 같은 원본 |
+| 원본 | 환경별 개인키·공개키 **고정 ARN 두 개**의 Secrets Manager Secret. `aws/secretsmanager` 암호화. dev EKS는 기존 원본·선택 버전을 유지 |
 | 값 형식 | 개인키는 RSA 2048bit 이상 PKCS8 PEM; 공개키는 정확한 `kid → X.509 PEM` JSON 키링 |
 | 최초 생성 | 명시적 초기화에서 키쌍·kid 생성. 두 Secret 등록과 시험 서명/검증 뒤 배포 참조 확정. 부분 등록 실패는 같은 키로 복구 |
 | 소비 권한 | enrollment는 개인키·공개키, dashboard는 공개키만. ingest에는 JWT Secret 권한 없음 |
@@ -256,7 +256,8 @@ PEM 원문을 넣지 않는다. 선택한 키링 전체의 누락·빈 파일·�
 교체는 **모든 enrollment·dashboard verifier에 신·구 공개키 적용 → 모든 enrollment signer의
 개인키/active-kid 전환 → 마지막 구 키 발급 후 330초 이상 대기 → 구 공개키 제거** 순서다.
 330초는 `UserJwt.lifetime` 300초와 시간 허용 오차 30초를 합한 값이며 전환 시작 시점으로 재지 않는다.
-dev ECS/EKS의 남은 구 replica까지 verifier 적용을 확인하기 전 signer를 전환하지 않는다.
+dev EKS의 남은 구 replica까지 verifier 적용을 확인하기 전 signer를 전환하지 않는다.
+철거 전 실제로 남아 있는 ECS verifier/signer도 제외하지 않는다. 철거 확인은 키 교체와 별도다.
 부분 실패는 겹치는 공개키 상태를 유지하고 중단한다. 제거 후 롤백은 겹치는 공개키를 모든 verifier에
 먼저 복구한 뒤 구 signer로 전환하며, 신 AT도 마지막 신 키 발급 후 330초 이상 검증되게 신 공개키를 유지한다.
 
@@ -271,17 +272,26 @@ Dashboard는 AT/RT를 발급·갱신하거나 인증 시도 기록을 쓰지 않
 
 | 주체 | 소유하는 것 |
 |---|---|
-| backend | 같은 `:apps:dashboard-api`의 ARM64 이미지 build/push; 기존 task definition을 쓰는 ECS CD |
-| infra CDK | ECS task/service·runtime 주입·IAM·DB 계정/권한 준비·ALB/TG/WAF·EKS AWS 자원 |
-| infra Helm | Kubernetes Deployment/Service/설정·secret mount·TargetGroupBinding과 수동 Helm 배포 |
+| backend dev CI | enrollment-api·telemetry-ingest·dashboard-api의 ARM64 이미지 검증·build/push와 `dev` 태그 승격 |
+| infra CDK·운영 절차 | EKS AWS 자원·IAM·DB 계정/권한 준비·ALB/TG/WAF·Secret 원본과 runtime 입력 |
+| infra Helm·운영자 | Kubernetes Deployment/Service/설정·secret mount·TargetGroupBinding과 수동 Helm 배포 |
+| EKS Auto Mode | 노드 생성·교체 |
 | frontend | API 소비, 화면 필드/상태, 동일 출처 BFF에서 조회 D·명령 E 선택 |
 
-ECR `soma-376/dashboard-api`의 **동일 `linux/arm64` artifact**를 ECS와 EKS에서 사용한다.
-backend CI의 immutable `sha-<commit>` tag와 승격용 `dev` tag가 가리키는 digest를 함께 기록하고,
-ECS task가 실제 당긴 digest와 EKS의 tag/digest가 같은 artifact인지 확인한다.
-EKS를 위해 다른 dashboard 이미지를 재빌드하지 않는다. backend CD는 CDK deploy, task definition 등록,
-EKS Helm 배포를 수행하지 않는다. 앱 공급 → infra 서비스 생성 → ECS CD → 같은 digest의 수동 EKS 배포 순서와
-실패·복구 절차는 infra 런북이 소유한다.
+이 표는 **dev 백엔드**의 경계다. prod ECS와 별도 frontend Terraform ECS의 배포 계약은 유지한다.
+backend dev workflow는 ECS 조회·재배포·안정화 대기를 수행하지 않으며 CDK·Helm·kubectl·task definition 등록도 하지 않는다.
+
+세 앱을 `linux/arm64`로 `sha-<commit>` 태그에 모두 게시한 뒤 각 build output digest를 기준으로
+`dev` 태그를 enrollment → ingest → dashboard 순서로 승격한다. 게시가 실패하면 승격하지 않는다.
+승격 도중 실패하면 이후 앱을 중단하고 이미 갱신한 태그는 유지한다. 세 태그 변경은 원자적 배포가 아니다.
+`sha-<commit>`도 같은 커밋 재실행으로 이동할 수 있으므로 태그를 immutable 증거로 쓰지 않는다.
+
+운영자는 ECR `soma-376/dashboard-api` 등 세 앱의 확인한 **immutable digest**를 선택해 수동 배포한다.
+배포 기록은 backend commit·앱별 build digest·태그 대응·runtime/workload 입력을 함께 남긴다.
+실제 Pod imageID를 ARM64 manifest digest와 대조하고, image index를 사용했다면 하위 ARM64 manifest와의 관계도 확인한다.
+EKS용으로 이미지를 다시 빌드하지 않는다. 원천 Flyway를 실행하는 enrollment의 준비를 확인한 뒤
+ingest·dashboard 순서로 배포하며, 이미지 게시 성공과 기동·기능 검증 성공을 구별한다.
+설치·실패·복구는 [infra EKS 런북](../../infra/docs/runbooks/dev-eks-manual-deployment.md)이 소유한다.
 키 원본의 최초 등록·보존·IAM·버전 선택·runtime 파일 공급도 infra가 소유한다.
 backend는 파일 로딩·서명/검증·기동 검증을 맡으며, 키 교체를 위해 이미지를 재빌드하지 않는다.
 
@@ -297,7 +307,17 @@ E의 계약 저장 명령을 호출한다. 상세 응답과 화면 동작은 각
 미등록 method/path 404를 각각 검증한다. Running/Ready 또는 health 200만으로 이 검증을 완료했다고 기록하지 않는다.
 NodePort 숫자는 이 허브에서 지정하지 않으며 PROJ-223에서 확정한 값을 CDK SG/TG/output과 Helm Service가 공유한다.
 
+**관리·메일의 현재 상태**: 앱은 §4의 두 플래그를 지원하지만, dev EKS의 [runtime 입력 검사](../../infra/lib/dev/runtime-input.cjs)는
+추가 Secret 공급이 구현되지 않아 `managementEnabled` 또는 `mailEnabled`가 `true`이면 거부한다. 현재 허용값은 둘 다 `false`다.
+활성화 준비 조건은 backend의 [메일 발송 운영](../../pulsemetry-backend/docs/mail-operations.md#3-배포-준비-조건--인프라-작업에-넘기는-것)을 따른다.
+
 **JWT 공급의 현재 상태**: backend의 파일 기반 RS256 로더와 kid 검증은 존재한다.
-ADR 0022의 최초 키 생성·Secret 등록·버전 고정 파일 공급·AWS 배포는 이 문서 채택으로 완료되지 않는다.
+infra 로컬 구현에는 기존 원본의 Pod Identity·ASCP/CSI·버전 고정 파일 공급이 있다.
+최초 키 생성·Secret 등록·실제 mount 권한·AWS 배포는 이 문서 채택이나 로컬 구현만으로 완료되지 않는다.
 배포 수락에는 키 누락·빈 파일·읽기 불가·잘못된 PEM·RSA 크기 미달·키쌍/kid 불일치·부분 등록 복구·
 전체 교체와 제거 후 롤백 검증, 활성/롤백 label 보존 확인이 포함된다. health 200·template 검증으로 대신하지 않는다.
+
+**dev 전환의 현재 상태**: PROJ-248의 infra 로컬 변경과 PROJ-249의 backend 로컬 workflow를 이 계약에 반영한다.
+실제 이미지 게시·AWS ECS 철거·Snapshot·EKS 기능 검증·DB 연결 한도 문제 해결은 확인하지 않았다.
+철거 전제와 순서는 [infra 철거 런북](../../infra/docs/runbooks/dev-ecs-retirement.md)을 따른다.
+PROJ-250은 허브 계약 정합화이며, 관련 구현과 계약이 머지되기 전까지 이 문서는 변경 중이다.

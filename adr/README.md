@@ -32,10 +32,14 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0003 | [텔레메트리 파이프라인은 별도 레포로 유지하고 collector만 backend로 이관한다](0003-telemetry-pipeline-repo-boundary.md) | Superseded by [ADR 0004](0004-telemetry-pipeline-repo-merge.md) |
 | 0004 | [텔레메트리 파이프라인을 backend 레포로 병합한다](0004-telemetry-pipeline-repo-merge.md) | Accepted |
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted |
-| 0021 | [Dashboard runtime과 배포 경계를 backend와 infra가 나눠 소유한다](0021-dashboard-runtime-and-deployment-contract.md) | Accepted (JWT 키 공급은 ADR 0022로 보충) |
-| 0022 | [사용자 JWT 키는 별도 Secrets Manager Secret의 버전을 파일로 공급한다](0022-user-jwt-key-provisioning.md) | Accepted |
+| 0021 | [Dashboard runtime과 배포 경계를 backend와 infra가 나눠 소유한다](0021-dashboard-runtime-and-deployment-contract.md) | Accepted (JWT 키 공급은 ADR 0022로 보충; dev 배포 부분은 ADR 0023으로 대체) |
+| 0022 | [사용자 JWT 키는 별도 Secrets Manager Secret의 버전을 파일로 공급한다](0022-user-jwt-key-provisioning.md) | Accepted (dev ECS 병행 소비·전달 부분은 ADR 0023으로 대체) |
+| 0023 | [dev 백엔드는 EKS에서 실행하고 이미지 공급과 수동 배포를 분리한다](0023-dev-backend-eks-only.md) | Accepted (PROJ-250; 계약 변경 중, 실제 AWS 철거·기능 검증 별도) |
 
-새 ADR은 `0023`부터. `0006`~`0020`은 다른 인증·설치·API 경로·화면 계약 브랜치에서 사용/예약 중이므로 재사용하지 않는다. 이 브랜치는 해당 ADR을 가져오거나 번호를 바꾸지 않는다. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+이 브랜치의 새 ADR은 `0024`부터. `0006`~`0020`은 다른 인증·설치·API 경로·화면 계약 브랜치에서 사용/예약 중이므로 재사용하지 않는다. 이 브랜치는 해당 ADR을 가져오거나 번호를 바꾸지 않는다. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+
+원격 main의 frontend ADR 0022와 이 브랜치의 JWT ADR 0022는 다른 문서다. 파일명과 링크를 보존하고
+제목을 함께 인용한다. 최신 main 통합·번호 충돌 정리는 [PROJ-250 통합 인계](../README.md#proj-250-현재-상태와-main-통합-인계)를 따른다.
 
 **크로스레포 ADR 후보** (아직 결정되지 않았거나 결정이 문서화되지 않은 것):
 
@@ -44,7 +48,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 **후보에서 결정으로 옮겨간 것:**
 
-- Dashboard 소재·캐시·runtime·배포 책임 → [ADR 0021](0021-dashboard-runtime-and-deployment-contract.md)
+- Dashboard 소재·캐시·runtime 책임 → [ADR 0021](0021-dashboard-runtime-and-deployment-contract.md); dev EKS 전용 배포 → [ADR 0023](0023-dev-backend-eks-only.md)
 - 사용자 JWT 키의 최초 생성·원본·버전·파일 공급·교체 책임 → [ADR 0022](0022-user-jwt-key-provisioning.md)
 
 - 텔레메트리 파이프라인의 소유 레포 → [ADR 0004](0004-telemetry-pipeline-repo-merge.md)
@@ -53,7 +57,8 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 - 파이프라인 내부 토폴로지(인증 위치·Collector 존치) → [ADR 0005](0005-single-app-telemetry-topology.md)
 - manifest 배정 단위 → [ADR 0002](0002-manifest-assignment-unit-is-tenant.md)
 - enrollment 스키마의 부트스트랩 주체 → 결정 완료(backend Flyway — backend ADR-0009,
-  [`../contracts/data-model.md`](../contracts/data-model.md) §5). 남은 것은 ECS 실행 자리(infra 새 ADR 예정)
+  [`../contracts/data-model.md`](../contracts/data-model.md) §5). dev는 enrollment 기동 시 Flyway를 선행하며,
+  prod의 마이그레이션 실행 자리와 실제 DB 권한·기능 검증은 별도다
 
 ---
 
@@ -64,12 +69,12 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
-| `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 현재 번호는 레포 인덱스가 기준 |
+| `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **영어 슬러그.** 현재 번호·동번호 문서의 범위는 레포 인덱스가 기준 |
 | `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **한국어 슬러그.** 현재 번호는 레포 인덱스가 기준 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 8 (0001–0008) | **한국어 슬러그.** 새 ADR은 `0009`부터 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 7 (현재 브랜치) | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 8 (현재 브랜치) | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
