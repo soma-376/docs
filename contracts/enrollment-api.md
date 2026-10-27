@@ -19,11 +19,12 @@
 | POST | `/api/v1/installations/telemetry-token` | `Authorization: Bearer <pit_…>` | 200 | telemetryctl (데몬) |
 | POST | `/api/v1/invitations` | `X-Admin-Token` | 201 | 관리자 |
 | POST | `/api/v1/invitations/{id}/revoke` | `X-Admin-Token` | 204 | 관리자 |
+| POST | `/api/v1/organizations/{organizationId}/invitations/batch` | 사용자 access token, owner/admin | 200 | 관리자 웹 UI |
 | GET | `/windows?code=…` / `/unix?code=…` | 없음 | 200 `text/plain` | 사용자 셸 |
 | GET | `/bin/{filename}` | 없음 | 200 `application/octet-stream` | 부트스트랩 스크립트 |
 | GET | `/api/v1/healthz` | 없음 | 200 | 운영 |
 
-스크립트·바이너리 경로에 `/v1` 접두사가 없는 것은 의도다 — 사용자가 터미널에 붙여넣는 URL이라 짧아야 한다.
+스크립트·바이너리 경로에 `/api/v1` 접두사가 없는 것은 의도다 — 사용자가 터미널에 붙여넣는 URL이라 짧아야 한다.
 
 ### 공개 설치 안내와 메일
 
@@ -35,6 +36,9 @@ backend의 `pulsemetry.management.installation-page-url`은 dev에서
 `invitation-accept-url`은 코드 없는 SSO 로그인 주소로 유지한다.
 
 메일은 암호화 outbox로 보내며 초대별 중복 방지·미발송 취소·재시도 계약을 유지한다.
+정상 메일 발급 동선은 사용자 인증을 거친 조직의 일괄 초대·재발급·설치 전용 초대 API다.
+정적 관리자 키의 `POST /api/v1/invitations`는 메일을 적재하지 않으므로 실제 발송 검증을
+그 엔드포인트로 대체하지 않는다.
 재발급은 새 코드와 링크를 사용한다. 동일 멱등 요청은 초대·메일을 중복 생성하지 않는다.
 query 코드 전달은 설치 페이지와 부트스트랩에 한정하고 제목·일반 로그·오류에 코드를 남기지
 않는다. 페이지는 `no-store`·`no-referrer`를 사용하며 페이지 열기로 코드를 소비하지 않는다.
