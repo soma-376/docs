@@ -36,10 +36,10 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0007 | [분석 snapshot과 수집 생애주기 요약을 원본 저장소와 분리한다](0007-dashboard-snapshots-and-telemetry-lifetime-summary.md) | Proposed |
 | 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted |
 | 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted |
-
 | 0022 | [프론트 이미지는 브랜치 머지 후 ECS에 자동 배포한다](0022-frontend-ecs-image-delivery.md) | Accepted |
+| 0023 | [dev 과거 시드는 독립 파일과 제한 속도로 적재하고 검증 후 SSO와 알림을 활성화한다](0023-dev-historical-dashboard-dataset.md) | Accepted |
 
-새 ADR은 `0023`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0024`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
@@ -77,7 +77,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 12 | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 11 (템플릿 제외) | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
