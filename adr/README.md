@@ -38,7 +38,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted |
 | 0022 | [프론트 이미지는 브랜치 머지 후 ECS에 자동 배포한다](0022-frontend-ecs-image-delivery.md) | Accepted |
 | 0023 | [dev 과거 시드는 독립 파일과 제한 속도로 적재하고 검증 후 SSO와 알림을 활성화한다](0023-dev-historical-dashboard-dataset.md) | Accepted |
-| 0024 | [dev 시드의 지연 감시는 왕복 시간과 HTTP 응답 요약 시간을 구분한다](0024-dev-seed-http-summary-latency.md) | Proposed |
+| 0024 | [dev 시드의 지연 감시는 왕복 시간과 HTTP 응답 요약 시간을 구분한다](0024-dev-seed-http-summary-latency.md) | Accepted |
 
 새 ADR은 `0025`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed — [ADR 0023](0023-dev-historical-dashboard-dataset.md)의 지연 중단 조건에 명시적으로 선택하는 측정 방식을 추가하는 제안이다. 기존 기준은 유효하며, 이 제안의 구현·로컬 검증·PR 자체가 dev 적용 승인을 뜻하지 않는다.
+Accepted — [ADR 0023](0023-dev-historical-dashboard-dataset.md)의 지연 중단 조건에 명시적으로 선택하는 측정 방식을 추가한다. 기존 기준도 유효하며, 실행별로 측정 방식과 상한을 고정하고 적용 확인을 기록한다.
 
 ## Context
 
