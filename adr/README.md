@@ -41,7 +41,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0024 | [dev 시드의 지연 감시는 왕복 시간과 HTTP 응답 요약 시간을 구분한다](0024-dev-seed-http-summary-latency.md) | Accepted |
 | 0025 | [초대 설치 링크와 사전 검증은 최종 enroll 소비와 분리한다](0025-invitation-installation-delivery.md) | Proposed |
 
-새 ADR은 `0025`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0026`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
