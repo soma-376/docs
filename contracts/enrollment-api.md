@@ -6,7 +6,7 @@
 | 기계 판독 원본 | `telemetryctl/contracts/enrollment-manifest.schema.json`, `enrollment-envelope.schema.json` |
 | 서버 측 상세 | `pulsemetry-backend/docs/api/enrollment.md` |
 | 관련 ADR | backend ADR-0003(계약과 2단 토큰), 0005(부트스트랩·바이너리 서빙), 0007(인증 계층), 0009(스키마 enum), [허브 ADR 0025](../adr/0025-invitation-installation-delivery.md) |
-| 상태 | 변경 중 — PROJ-266·268·146 구현 및 상대 레포 리뷰 대기 |
+| 상태 | 확정 — 초대 설치 동선과 사전 검증은 ADR 0025를 따른다 |
 
 관리자가 발급한 일회성 초대 코드를 검증·소비해 사용자 PC의 설치(installation)를 만들고,
 그 설치에 귀속되는 자격증명과 회사 단위 OTel 설정(manifest)을 내려주는 계약이다.
@@ -57,9 +57,10 @@ DB 장애는 서버 오류로 처리하고 코드 무효나 정상 다운로드�
 검사하고 조건부 UPDATE로 소비한다. 조회 후 취소·만료·다른 요청의 소비는 최종 enroll을
 거부한다. 사전 조회 결과는 예약이나 최종 허가가 아니다.
 
-정확한 `/unix`·`/windows`·`/api/v1/enroll`은 기존 등록 그룹과 출발지 IP별 합산
-300회/300초 WAF 예산을 공유한다. 차단은 HTTP 429와 `Retry-After: 60`이며 전달 헤더를
-집계 키로 신뢰하지 않는다. dev WAF 정책 배포·검증 후 사전 조회 기능을 공개한다.
+부트스트랩 URI는 한 번 URL decode한 뒤 `/unix`·`/windows`와 정확히 일치시키며,
+`/api/v1/enroll`을 포함한 기존 등록 API는 raw URI의 정확 일치를 유지한다. 이 경로들은
+출발지 IP별 합산 300회/300초 WAF 예산을 공유한다. 차단은 HTTP 429와 `Retry-After: 60`이며
+전달 헤더를 집계 키로 신뢰하지 않는다. dev WAF 정책 배포·검증 후 사전 조회 기능을 공개한다.
 HTTP 오류에서 셸 파이프 전체의 종료 코드 보장은 이 계약에 포함하지 않는다.
 
 ### 바이너리 산출물 이름 규칙
@@ -226,7 +227,7 @@ PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrol
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 강등 상태에서는 포워더 `Scrub`이 경로 밖이라 **manifest `privacy` 집행에 공백이 생긴다**(같은 문서 §5 M13). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
 | M10 | heartbeat·config 재조회·토큰 회전 부재. `installations.last_seen_at`·`telemetry_tokens.last_used_at`은 죽은 컬럼이고, `config_revision`은 저장만 하고 비교하지 않는다 | **manifest 변경이 기존 설치에 전파될 경로가 없다** ([`../product/prd.md`](../product/prd.md) §8-1) |
-| — | PROJ-269·268의 WAF 등록 그룹 확대·사전 조회는 dev 배포와 실제 차단·복구 검증이 필요하다 | 구현·합성 검사만으로 공개 적용 완료를 판단하지 않는다 |
+| — | **해소됨(PROJ-269·268)** — WAF 등록 그룹 확대와 사전 조회를 dev에 배포하고 실제 차단·복구, 조회 비소비, 상태 변경 후 거부와 동시 단일 성공을 검증했다 | [ADR 0025 수용 결과](../adr/0025-invitation-installation-delivery.md#수용-결과와-범위) 참조. 기존 제한 M7~M10은 별도다 |
 | — | `POST /api/v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
 | — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과). **기존 저장 manifest 주의** — `required` 추가라 이 필드가 없는 기존 v1 manifest는 서버 검증에서 409 `manifest_not_configured`가 된다. 테넌트 온보딩 전 수동 INSERT 점검이 필요하다 | — |
