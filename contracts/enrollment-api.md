@@ -4,9 +4,9 @@
 |---|---|
 | 당사자 | **`telemetryctl`** (Go 클라이언트) ↔ **`pulsemetry-backend`** (`apps/enrollment-api`) |
 | 기계 판독 원본 | `telemetryctl/contracts/enrollment-manifest.schema.json`, `enrollment-envelope.schema.json` |
-| 서버 측 상세 | `pulsemetry-backend/docs/enrollment-server-spec.md` |
-| 관련 ADR | backend ADR-0003(계약과 2단 토큰), 0005(부트스트랩·바이너리 서빙), 0007(인증 계층), 0009(스키마 enum) |
-| 상태 | 확정 |
+| 서버 측 상세 | `pulsemetry-backend/docs/api/enrollment.md` |
+| 관련 ADR | backend ADR-0003(계약과 2단 토큰), 0005(부트스트랩·바이너리 서빙), 0007(인증 계층), 0009(스키마 enum), [허브 ADR 0025](../adr/0025-invitation-installation-delivery.md) |
+| 상태 | 변경 중 — PROJ-266·268·146 구현 및 상대 레포 리뷰 대기 |
 
 관리자가 발급한 일회성 초대 코드를 검증·소비해 사용자 PC의 설치(installation)를 만들고,
 그 설치에 귀속되는 자격증명과 회사 단위 OTel 설정(manifest)을 내려주는 계약이다.
@@ -15,28 +15,78 @@
 
 | 메서드 | 경로 | 인증 | 성공 | 호출자 |
 |---|---|---|---|---|
-| POST | `/v1/enroll` | 없음 (초대 코드 자체가 자격) | 201 | telemetryctl |
-| POST | `/v1/installations/telemetry-token` | `Authorization: Bearer <pit_…>` | 200 | telemetryctl (데몬) |
-| POST | `/v1/invitations` | `X-Admin-Token` | 201 | 관리자 |
-| POST | `/v1/invitations/{id}/revoke` | `X-Admin-Token` | 204 | 관리자 |
+| POST | `/api/v1/enroll` | 없음 (초대 코드 자체가 자격) | 201 | telemetryctl |
+| POST | `/api/v1/installations/telemetry-token` | `Authorization: Bearer <pit_…>` | 200 | telemetryctl (데몬) |
+| POST | `/api/v1/invitations` | `X-Admin-Token` | 201 | 관리자 |
+| POST | `/api/v1/invitations/{id}/revoke` | `X-Admin-Token` | 204 | 관리자 |
+| POST | `/api/v1/organizations/{organizationId}/invitations/batch` | 사용자 access token, owner/admin | 200 | 관리자 웹 UI |
 | GET | `/windows?code=…` / `/unix?code=…` | 없음 | 200 `text/plain` | 사용자 셸 |
 | GET | `/bin/{filename}` | 없음 | 200 `application/octet-stream` | 부트스트랩 스크립트 |
-| GET | `/v1/healthz` | 없음 | 200 | 운영 |
+| GET | `/api/v1/healthz` | 없음 | 200 | 운영 |
 
-스크립트·바이너리 경로에 `/v1` 접두사가 없는 것은 의도다 — 사용자가 터미널에 붙여넣는 URL이라 짧아야 한다.
+스크립트·바이너리 경로에 `/api/v1` 접두사가 없는 것은 의도다 — 사용자가 터미널에 붙여넣는 URL이라 짧아야 한다.
 
-### 바이너리 산출물 이름 규칙 — 이 문서가 소유한다
+### 공개 설치 안내와 메일
 
-`GET /bin/{filename}`이 서빙하는 파일명은 **정확히 여섯 개**다. 만드는 쪽(`telemetryctl` 릴리스)과
-쓰는 쪽(backend `BinaryController` 화이트리스트, 부트스트랩 스크립트)이 서로 다른 레포라 이 목록이 계약이다.
+`pulsemetry-frontend`의 `/install?code=…`는 인증 없이 설치 명령을 제공하는 페이지다.
+backend의 `pulsemetry.management.installation-page-url`은 dev에서
+`https://dev.pulsemetry.co.kr/install`이며, 관리·메일 활성화 시 유효한 URL이 필수다.
+설치 가능한 일반 초대·설치 전용 초대·재발급 메일에는 정규화한 코드의 설치 링크와 기존 원시
+설치 명령을 함께 넣는다. 설치 권한을 소진한 초대에는 둘 다 넣지 않는다.
+`invitation-accept-url`은 코드 없는 SSO 로그인 주소로 유지한다.
 
-`pulsemetry_windows_amd64.exe` · `pulsemetry_windows_arm64.exe` · `pulsemetry_darwin_amd64` ·
-`pulsemetry_darwin_arm64` · `pulsemetry_linux_amd64` · `pulsemetry_linux_arm64`
+메일은 암호화 outbox로 보내며 초대별 중복 방지·미발송 취소·재시도 계약을 유지한다.
+정상 메일 발급 동선은 사용자 인증을 거친 조직의 일괄 초대·재발급·설치 전용 초대 API다.
+정적 관리자 키의 `POST /api/v1/invitations`는 메일을 적재하지 않으므로 실제 발송 검증을
+그 엔드포인트로 대체하지 않는다.
+재발급은 새 코드와 링크를 사용한다. 동일 멱등 요청은 초대·메일을 중복 생성하지 않는다.
+query 코드 전달은 설치 페이지와 부트스트랩에 한정하고 제목·일반 로그·오류에 코드를 남기지
+않는다. 페이지는 `no-store`·`no-referrer`를 사용하며 페이지 열기로 코드를 소비하지 않는다.
+프론트의 `NEXT_PUBLIC_ENROLLMENT_API_URL`은 backend 공개 API 주소와 일치해야 한다.
 
-규칙은 `pulsemetry_{os}_{arch}`(Windows만 `.exe`)다. **이 이름으로 산출물을 만드는 릴리스
-파이프라인은 `telemetryctl`에 아직 없다**(backend ADR-0005 Follow-up의 서빙 전제 3건 중 하나).
+### 부트스트랩 코드 사전 검증
 
-## 2. `POST /v1/enroll`
+`/unix`·`/windows`는 `InvitationCode` 규칙으로 정규화·형식 검사한 뒤 SHA-256 해시로
+초대 상태를 읽는다. 유효한 코드만 다운로드 스크립트를 받는다. 누락·형식 오류·미존재·만료·
+사용·취소는 사유별 고정 안내를 stderr에 출력하고 실패 종료하는 스크립트를 HTTP 200
+`text/plain`으로 반환한다. 오류 스크립트는 바이너리 요청·파일 생성·enroll을 실행하지 않으며
+입력 코드를 재출력하지 않는다. 모든 스크립트는 `Cache-Control: no-store`를 사용한다.
+DB 장애는 서버 오류로 처리하고 코드 무효나 정상 다운로드로 바꾸지 않는다.
+
+사전 조회는 `used_at`, 설치, 구성원 상태를 바꾸지 않는다. 최종 enroll은 반드시 상태를 다시
+검사하고 조건부 UPDATE로 소비한다. 조회 후 취소·만료·다른 요청의 소비는 최종 enroll을
+거부한다. 사전 조회 결과는 예약이나 최종 허가가 아니다.
+
+정확한 `/unix`·`/windows`·`/api/v1/enroll`은 기존 등록 그룹과 출발지 IP별 합산
+300회/300초 WAF 예산을 공유한다. 차단은 HTTP 429와 `Retry-After: 60`이며 전달 헤더를
+집계 키로 신뢰하지 않는다. dev WAF 정책 배포·검증 후 사전 조회 기능을 공개한다.
+HTTP 오류에서 셸 파이프 전체의 종료 코드 보장은 이 계약에 포함하지 않는다.
+
+### 바이너리 산출물 이름 규칙
+
+공개 `GET /bin/{filename}`과 원격 릴리스 파일 이름은 다음처럼 매핑한다.
+
+| 공개 경로 파일명 | GitHub Releases CLI 자산 |
+|---|---|
+| `pulsemetry_windows_amd64.exe` | `pulsemetry_cli_windows_amd64.exe` |
+| `pulsemetry_windows_arm64.exe` | `pulsemetry_cli_windows_arm64.exe` |
+| `pulsemetry_darwin_amd64` | `pulsemetry_cli_darwin_amd64` |
+| `pulsemetry_darwin_arm64` | `pulsemetry_cli_darwin_arm64` |
+| `pulsemetry_linux_amd64` | `pulsemetry_cli_linux_amd64` |
+| `pulsemetry_linux_arm64` | `pulsemetry_cli_linux_arm64` |
+
+공급 태그는 **`v0.1.0-rc.2`**로 고정한다. prerelease를 명시적으로 선택하며 `latest`나 로컬
+재빌드로 대체하지 않는다. 원격 CLI 6종과 `SHA256SUMS`를 받아 필수 파일 존재·목록 포함·실제
+SHA-256 일치를 모두 검증한다. 목록의 GUI 항목은 CLI 공급 대상이 아니다. 조회 실패·파일
+누락·해시 불일치는 이미지 빌드를 실패시킨다.
+
+검증한 게시 파일은 enrollment 이미지의 `/app/binaries/v0.1.0-rc.2/`에 실행 사용자가 읽을 수
+있도록 포함하고 `PULSEMETRY_BINARIES_DIR=/app/binaries`로 연결한다. 기존 `BinaryController`와
+`DaemonRelease`의 versioned 매핑·해시 검증·업데이트 인식 동작을 사용한다. 릴리스 변경 시 태그,
+필수 자산 해시, 배포 이미지 digest를 기록한다. 실제 dev 공개 6종의 해시가 게시 자산과 같아야
+하며 이전 이미지 digest와 설정을 지정해 복구한다. 이미지 게시와 실제 EKS 배포·검증은 별도다.
+
+## 2. `POST /api/v1/enroll`
 
 **요청**
 
@@ -66,12 +116,12 @@ UPDATE enrollment.invitations SET used_at = :now
 WHERE code_hash = :codeHash AND used_at IS NULL AND revoked_at IS NULL AND expires_at > :now
 ```
 
-`SELECT` 후 `UPDATE` 하지 않는다. 동시 요청 N개가 같은 코드로 들어와도 **정확히 하나만 201**을 받고
+소비 권한을 `SELECT` 결과만으로 결정한 뒤 무조건 `UPDATE`하지 않는다. 사전 조회와 별개로 위 조건부 UPDATE가 최종 소비를 결정한다. 동시 요청 N개가 같은 코드로 들어와도 **정확히 하나만 201**을 받고
 나머지는 409 `invitation_used`다.
 
 **enroll 성공은 대상 멤버의 `invited → active` 전환 이벤트다.** OTLP 경로의 auth-proxy가
 `invited` 멤버의 토큰을 거부하므로, 이 전환 없이는 발급된 telemetry token이 전부 401이 된다
-([`telemetry-ingest.md`](telemetry-ingest.md) §3). 재발급(`POST /v1/installations/telemetry-token`)도
+([`telemetry-ingest.md`](telemetry-ingest.md) §3). 재발급(`POST /api/v1/installations/telemetry-token`)도
 같은 전환을 보정한다 — `pit_` 인증이 과거 enroll 완료의 증명이기 때문이다.
 전환은 `invited`에서만 일어난다. **`suspended`는 어느 경로도 건드리지 않는다** — 정지 해제는 관리자의 결정이지 설치의 부수효과가 아니다.
 
@@ -176,7 +226,7 @@ PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrol
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 강등 상태에서는 포워더 `Scrub`이 경로 밖이라 **manifest `privacy` 집행에 공백이 생긴다**(같은 문서 §5 M13). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
 | M10 | heartbeat·config 재조회·토큰 회전 부재. `installations.last_seen_at`·`telemetry_tokens.last_used_at`은 죽은 컬럼이고, `config_revision`은 저장만 하고 비교하지 않는다 | **manifest 변경이 기존 설치에 전파될 경로가 없다** ([`../product/prd.md`](../product/prd.md) §8-1) |
-| — | `/v1/enroll`에 rate limit이 없다 | 60비트 초대 코드의 유일한 브루트포스 표면이 무방비 |
-| — | `POST /v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
+| — | PROJ-269·268의 WAF 등록 그룹 확대·사전 조회는 dev 배포와 실제 차단·복구 검증이 필요하다 | 구현·합성 검사만으로 공개 적용 완료를 판단하지 않는다 |
+| — | `POST /api/v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
 | — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과). **기존 저장 manifest 주의** — `required` 추가라 이 필드가 없는 기존 v1 manifest는 서버 검증에서 409 `manifest_not_configured`가 된다. 테넌트 온보딩 전 수동 INSERT 점검이 필요하다 | — |
