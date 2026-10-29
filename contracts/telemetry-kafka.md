@@ -75,9 +75,27 @@ Kafka 안에서는 `tenant_id:installation_id` key에 따른 partition 순서를
 
 재전송·재전달은 at-least-once이므로 중복을 허용한다. Kafka envelope의 `message_id`는 재시도에도
 같은 receipt ID로 유지되고 HTTP 재전송은 새 receipt ID를 만든다. 분석 행의 중복 수렴 기준은
-요청 ID가 아닌 기존 `observation_id`와 `row_version`이며 ClickHouse 조회에는 `FINAL`을 적용한다.
-과거 계약의 `record_id`를 두 수신 경로를 잇는 새 중복 제거 키로 사용하지 않는다.
+요청 ID가 아닌 아래 분석 테이블의 복합 정렬 키와 `row_version`이며 ClickHouse 조회에는 `FINAL`을 적용한다.
 이 규칙은 전송 간 exactly-once 또는 전역 순서를 보장하지 않는다.
+
+| 항목 | HTTP·Kafka가 공유하는 현재 적재 규칙 |
+|---|---|
+| 테이블 | logs·선별된 spans는 `telemetry_events`, metric points는 `telemetry_metric_points` |
+| 엔진·버전 | 두 테이블 모두 `ReplacingMergeTree(row_version)`, `row_version UInt64` |
+| partition·정렬 키 | `PARTITION BY toYYYYMM(source_time)`, `ORDER BY (tenant_id, source_time, installation_id, observation_id)` |
+| 컬럼 매핑 | 공통 `IngestPipeline`의 sink가 `ObservationEnvelope`의 tenant·source time·installation·observation ID를 같은 이름의 컬럼에 쓰고, `RowVersioning.rowVersion`을 `row_version`에 쓴다 |
+| 버전 산식 | `(normalizer_rev << 32) \| ingest_seq`; live `ingest_seq`는 archive receipt 수신 시각의 epoch 초다. Kafka는 보존된 `accepted_at`, HTTP는 해당 요청 접수 시각을 사용한다 |
+
+따라서 동일 관측의 복합 정렬 키가 같을 때 높은 버전의 행으로 수렴한다. 같은 Kafka record의 재시도는
+접수 시각과 버전이 같고, HTTP 재전송은 새 접수 시각에 따른 버전을 가질 수 있다.
+현재 두 수신 경로는 같은 처리 코어와 이 컬럼 매핑을 사용한다.
+근거는 backend의 [V2 분석 DDL](https://github.com/soma-376/pulsemetry-backend/blob/develop/libs/telemetry-persistence/src/main/resources/clickhouse/V2__telemetry_analysis_tables.sql),
+[공통 행 매핑](https://github.com/soma-376/pulsemetry-backend/blob/develop/libs/telemetry-persistence/src/main/kotlin/com/team376/pulsemetry/persistence/telemetry/AnalysisEnvelopeRow.kt),
+[버전 산식](https://github.com/soma-376/pulsemetry-backend/blob/develop/libs/telemetry-adapter/src/main/kotlin/com/team376/pulsemetry/telemetry/adapter/observation/ObservationEnvelope.kt)이다.
+
+기존 `enriched_events`는 별도 V1 테이블로 `ReplacingMergeTree ORDER BY event_id`이며
+그 경로의 `event_id = record_id` 계약을 보존한다. 현재 분석 테이블의 `observation_id`로 이름을 바꾸거나
+두 식별자를 서로 변환하지 않는다. Kafka 전환이 기존 `enriched_events` 데이터를 이관하거나 삭제하지 않는다.
 
 HTTP→dual→Kafka 전환 실패 시 ALB와 ingest를 기존 HTTP 모드로 복구하며 Strimzi PVC와 offset을 유지한다.
 사용자 승인에 따라 기존 MSK 데이터·offset 이관 없이 새 경로 안정화 후 MSK와 전용 리소스를 삭제한다.
