@@ -81,10 +81,10 @@ HTTP 오류에서 셸 파이프 전체의 종료 코드 보장은 이 계약에 
 SHA-256 일치를 모두 검증한다. GUI도 같은 고정 해시 검증을 거쳐 공급한다. 조회 실패·파일
 누락·해시 불일치는 이미지 빌드를 실패시킨다.
 
-검증한 게시 파일은 enrollment 이미지의 `/app/binaries/v0.1.0-rc.2/`에 실행 사용자가 읽을 수
+검증한 게시 파일은 enrollment 이미지의 `/app/binaries/v0.1.0-rc.3/`에 실행 사용자가 읽을 수
 있도록 포함하고 `PULSEMETRY_BINARIES_DIR=/app/binaries`로 연결한다. 기존 `BinaryController`와
 `DaemonRelease`의 versioned 매핑·해시 검증·업데이트 인식 동작을 사용한다. 릴리스 변경 시 태그,
-필수 자산 해시, 배포 이미지 digest를 기록한다. 실제 dev 공개 6종의 해시가 게시 자산과 같아야
+필수 자산 해시, 배포 이미지 digest를 기록한다. 실제 dev 공개 12종의 해시가 게시 자산과 같아야
 하며 이전 이미지 digest와 설정을 지정해 복구한다. 이미지 게시와 실제 EKS 배포·검증은 별도다.
 
 GUI는 `pulsemetry_gui_windows_{amd64|arm64}.exe`, `pulsemetry_gui_darwin_{amd64|arm64}.dmg`,
