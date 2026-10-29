@@ -3,9 +3,9 @@
 | 항목 | 내용 |
 |---|---|
 | 당사자 | **frontend(레포 미생성)** ↔ **backend(소재 미정)** |
-| 상태 | **부분 확정.** §3 사용 환산액은 PROJ-290의 [backend #53](https://github.com/soma-376/pulsemetry-backend/pull/53)·[frontend #31](https://github.com/soma-376/pulsemetry-frontend/pull/31)에 반영됐다. 나머지 API 명세는 골격이다 |
+| 상태 | **부분 확정.** 사용 환산액 절은 PROJ-290의 [backend #53](https://github.com/soma-376/pulsemetry-backend/pull/53)·[frontend #31](https://github.com/soma-376/pulsemetry-frontend/pull/31)에 반영됐다. 나머지 API 명세는 골격이다 |
 
-> **§3을 제외한 API 명세는 자리표시자다.** 여기에는 [`../architecture/overview.md`](../architecture/overview.md)에서
+> **사용 환산액 절을 제외한 API 명세는 자리표시자다.** 여기에는 [`../architecture/overview.md`](../architecture/overview.md)에서
 > 이미 결정된 구조적 제약을 정리했다. 엔드포인트별 계약은
 > [`enrollment-api.md`](enrollment-api.md) 수준으로 보완한다.
 
