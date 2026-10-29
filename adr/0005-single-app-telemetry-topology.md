@@ -2,6 +2,8 @@
 
 ## Status
 
+부분 대체: dev Kafka 경로의 JWT Gateway·네트워크 큐·ACK 응답은 [ADR 0026](0026-dev-telemetry-kafka-strimzi.md)을 따른다. 기존 HTTP 복구 경로와 나머지 결정은 유지한다.
+
 Accepted — [ADR 0001](0001-otlp-authentication-model.md)의 신원 헤더 전파 결정(4종 부여 후 collector가
 전파)을 대체한다. 같은 ADR의 나머지 결정(불투명 토큰, 앱 계층 검증, ALB 인증 미채택)은 유효하다.
 

@@ -1,5 +1,7 @@
 # 계약 — telemetry ingest (OTLP 전송·인증·신원 전파)
 
+> dev Kafka 비동기 경로의 합의는 [telemetry-kafka 계약](telemetry-kafka.md)과 [ADR 0026](../adr/0026-dev-telemetry-kafka-strimzi.md)을 따른다. 아래 동기 HTTP·큐 없음 서술은 Kafka 전환 전/복구 경로이며 배포 완료 증거가 아니다.
+
 | 항목 | 내용 |
 |---|---|
 | 당사자 | **`telemetryctl`** (데몬 forwarder) → 현재 **`ai-telemetry-pipeline`** (auth-proxy · collector · processor), 목표 **`pulsemetry-backend/:apps:telemetry-ingest`**. 배포 설정은 **`infra`** |

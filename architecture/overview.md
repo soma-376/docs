@@ -139,6 +139,11 @@ flowchart LR
 
 ### A — 텔레메트리 수집 (쓰기)
 
+Dev의 비동기 수집 경계는 [ADR 0026](../adr/0026-dev-telemetry-kafka-strimzi.md)과
+[Kafka 계약](../contracts/telemetry-kafka.md)을 따른다. JWT Gateway → Strimzi Kafka → ingest 순서이며,
+아래 처리 모듈들은 계속 ingest 프로세스 안에서 실행된다. 성공 ACK는 Kafka 내구성 기록 완료를 뜻한다.
+
+
 ```
 AI tool → Desktop Application → API Gateway → Collector → Masker → Adapter → Enricher → Signal Database
               └→ Local Store                              └────────────────→ Raw Signal Object Storage
