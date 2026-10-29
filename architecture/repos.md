@@ -32,7 +32,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
 | [`infra`](#infra) | AWS CDK v2 (TS) | **모든 AWS 리소스**, collector 배포 설정 | `develop` | 23건 |
-| [`infra-generated-values`](#infra-generated-values) | 생성된 YAML / Markdown | **생성된 Helm values의 private 동기화 사본** | `develop` | [허브 ADR 0026](../adr/0026-generated-values-private-sync-copy.md) (Proposed) |
+| [`infra-generated-values`](#infra-generated-values) | 생성된 YAML / Markdown | **생성된 Helm values의 private 동기화 사본** | `main` | [허브 ADR 0026](../adr/0026-generated-values-private-sync-copy.md) (Proposed) |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -42,7 +42,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 코드 레포 4종(`pulsemetry-backend`·`telemetryctl`·`ai-telemetry-pipeline`·`infra`)만 협업 컨벤션 v2의
 develop/squash 플로우를 따른다. `docs`는 develop 없이 티켓 브랜치에서 `main`으로 직접 PR을 열고,
 `.github/workflows/`의 PR 자동화가 main 대상 PR에 적용된다.
-`infra-generated-values`는 별도의 private 사본 저장소이며 기본 브랜치는 `develop`이다.
+`infra-generated-values`는 별도의 private 사본 저장소이며 기본 브랜치는 `main`이다.
 초기 README·AGENTS는 해당 브랜치에 직접 기록한다. 사본 공급 규칙은
 [`generated-values-sync.md`](../contracts/generated-values-sync.md)를 따른다.
 
@@ -176,7 +176,7 @@ config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
 ## infra-generated-values
 
 [`soma-376/infra-generated-values`](https://github.com/soma-376/infra-generated-values)는 생성된 Helm
-values를 접근 제한 상태로 보관하는 private 레포다. 기본 브랜치는 `develop`이다.
+values를 접근 제한 상태로 보관하는 private 레포다. 기본 브랜치는 `main`이다.
 
 - **소유**: `dev/generated/`의 허용 YAML 사본과 `dev/infra-commit.txt`의 대응 infra revision.
   README·AGENTS는 목적·수정 경로·담당 주체와 허브 계약을 안내한다.
