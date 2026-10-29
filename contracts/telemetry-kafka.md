@@ -58,9 +58,21 @@ CA 개인키는 앱에 주지 않는다. 비밀번호는 generated values·환�
 ## 권한과 수명
 
 stage별 Gateway는 지정 topic의 Write/Describe 및 cluster IdempotentWrite,
-ingest는 지정 topic Read/Describe 및 지정 group 처리만 허용한다.
-topic 설정은 KafkaTopic/Topic Operator, offset reset은 별도 수동 관리 Job만 수행한다.
+ingest는 지정 topic과 group의 Read/Describe를 갖는다. 별도 `offset-admin` 사용자도
+같은 stage의 지정 topic과 group에 Read/Describe를 갖는다. topic 설정은 KafkaTopic/Topic Operator가 소유한다.
 앱 ServiceAccount의 AWS JWT·DB·S3 권한은 Kafka ACL과 독립적으로 유지한다.
+
+Kafka 4.2.2의 정상 consumer commit과 `Admin.alterConsumerGroupOffsets`를 통한 offset reset은
+모두 `OffsetCommit` 요청을 사용하며 Group Read와 Topic Read를 요구한다. 따라서 ingest의 정상 commit을
+허용하면서 같은 group의 offset reset만 Kafka ACL로 거부할 수 있다고 보장하지 않는다.
+근거는 [Kafka 권한 매핑](https://kafka.apache.org/42/security/authorization-and-acls/#operations-and-resources-on-protocols)과
+[4.2.2 offset 변경 구현](https://github.com/apache/kafka/blob/4.2.2/clients/src/main/java/org/apache/kafka/clients/admin/internals/AlterConsumerGroupOffsetsHandler.java)이다.
+
+운영자가 실행하는 offset reset은 별도 `offset-admin` 자격과 수동 관리 Job으로 제한한다.
+이는 자격 공급과 실행 절차의 분리다. 앱에는 `offset-admin` Secret을 공급하지 않으며,
+수동 Job은 대상 stage·topic·group과 변경할 offset을 확인하고 group 중지·변경 전후 offset 대조 절차를 따른다.
+ACL 검증은 지정 외 topic/group 접근, Gateway 읽기와 ingest 쓰기의 거부를 확인한다.
+ingest의 같은 group reset 거부를 별도 ACL 보장이나 검증 완료 조건으로 삼지 않는다.
 
 CA·사용자 인증서는 유효기간 365일, 갱신 창 30일이다. Secret UID/resourceVersion으로 만든
 `kafka.tlsRevision` annotation을 명시적 Helm 배포에 반영한다. 자동 갱신만으로 외부 앱이
