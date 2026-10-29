@@ -2,7 +2,7 @@
 
 | 항목 | 내용 |
 |---|---|
-| 당사자 | **frontend(레포 미생성)** ↔ **backend(소재 미정)** |
+| 당사자 | [pulsemetry-frontend](https://github.com/soma-376/pulsemetry-frontend) ↔ [pulsemetry-backend](https://github.com/soma-376/pulsemetry-backend) |
 | 상태 | **부분 확정.** 사용 환산액 절은 PROJ-290의 [backend #53](https://github.com/soma-376/pulsemetry-backend/pull/53)·[frontend #31](https://github.com/soma-376/pulsemetry-frontend/pull/31)에 반영됐다. 나머지 API 명세는 골격이다 |
 
 > **사용 환산액 절을 제외한 API 명세는 자리표시자다.** 여기에는 [`../architecture/overview.md`](../architecture/overview.md)에서
