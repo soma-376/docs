@@ -142,18 +142,23 @@ flowchart LR
 Dev의 비동기 수집 경계는 [ADR 0026](../adr/0026-dev-telemetry-kafka-strimzi.md)과
 [Kafka 계약](../contracts/telemetry-kafka.md)을 따른다. JWT Gateway → Strimzi Kafka → ingest 순서이며,
 아래 처리 모듈들은 계속 ingest 프로세스 안에서 실행된다. 성공 ACK는 Kafka 내구성 기록 완료를 뜻한다.
-
+아래 dev 경로는 합의한 전환 목표이며 실제 배포·검증 상태는 Kafka 계약의 현재 상태 절에서 관리한다.
 
 ```
-AI tool → Desktop Application → API Gateway → Collector → Masker → Adapter → Enricher → Signal Database
-              └→ Local Store                              └────────────────→ Raw Signal Object Storage
+dev Kafka: AI tool → Desktop Application → ALB → JWT Gateway → Strimzi Kafka → ingest
+                        └→ Local Store
+HTTP 복구: Desktop Application → ALB → ingest HTTP 수신기
+
+ingest 내부: Collector → Masker → Adapter → Enricher → Signal Database
+                           └──────────────────────→ Raw Signal Object Storage
 ```
 
 - AI tool → Desktop은 **push**다. 벤더의 OTel exporter가 데몬의 loopback 수신기로 보낸다. 로그 파일 감시가 아니다.
 - 데몬은 배치를 두 갈래로 나눈다: ① 원본 바이트 → 상위 전달(프라이버시 1차 집행) ② 정규화 결과 → Local Store(개인용).
 - 파이프라인은 단방향 4단계다. 정상 흐름에 되돌아오는 경로가 없다.
 - **네 단계는 한 애플리케이션 안의 모듈이고 전달은 in-process 호출이다**([`../adr/0005-single-app-telemetry-topology.md`](../adr/0005-single-app-telemetry-topology.md)).
-  단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 네트워크 홉도 큐도 두지 않는다.
+  ingest 내부 단계는 모듈 경계로 나뉘며, 그 사이에는 네트워크 홉도 큐도 두지 않는다.
+  Gateway와 ingest 사이의 Kafka는 이 내부 처리 단계 앞에 놓인 별도 수집 경계다.
   여기의 네 단계는 **데이터흐름 노드**를 센 것이다. ADR 0005가 "다섯 계층"이라 부르는 것은 앞뒤로
   인증과 적재를 더한 **애플리케이션 내부 계층**이고, backend 모듈 수는 또 다르다 — 축이 셋이므로
   숫자를 맞대어 읽지 않는다. 노드와 모듈의 대응은 backend `docs/module-map.md`가 담는다.
@@ -163,9 +168,11 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - 프롬프트는 정책에 따라 이 경로를 탄다. Privacy가 꺼져 있으면 데몬이 전송 전에 제거하므로 서버에 도달하지 않는다.
 - Masker가 어느 조직의 규칙을 적용할지는 함께 넘어온 인가 정보로 정한다.
 
-위 네 이름은 **논리 노드**다. 실제 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)와 그 계약은
-[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다. 노드 `Collector`와 그 컨테이너는
-다른 것이다([`../glossary.md`](../glossary.md)).
+위 네 이름은 **논리 노드**다. dev의 두 수신 경로는 같은 ingest 처리 코어를 호출하며,
+JWT 검증·RDB 재검증·전환 모드 계약은 [`../contracts/telemetry-kafka.md`](../contracts/telemetry-kafka.md)에 있다.
+기존 HTTP 계약과 이전 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)는
+[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 남긴다.
+노드 `Collector`와 OTel Collector 컨테이너는 다른 것이다([`../glossary.md`](../glossary.md)).
 
 ### B — 대시보드 조회 (읽기)
 
