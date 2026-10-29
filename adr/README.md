@@ -34,7 +34,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted; dev Kafka 부분 대체: [ADR 0026](0026-dev-telemetry-kafka-strimzi.md) |
 | 0006 | [OTLP ingest 는 영구 실패를 4xx 로, 일시 실패를 503 으로 돌려주고 배치 큐를 두지 않는다](0006-otlp-ingest-retry-and-status-contract.md) | Accepted; dev Kafka 부분 대체: [ADR 0026](0026-dev-telemetry-kafka-strimzi.md) |
 | 0007 | [분석 snapshot과 수집 생애주기 요약을 원본 저장소와 분리한다](0007-dashboard-snapshots-and-telemetry-lifetime-summary.md) | Proposed |
-| 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted — 가격판 선택·버전 기록 부분 대체: [ADR 0028](0028-single-reference-price-catalog.md) |
+| 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted — 가격판 선택·버전 기록·가격판별 재평가 대상 선택 부분 대체: [ADR 0028](0028-single-reference-price-catalog.md) |
 | 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted — 가격판 합산 조건 부분 대체: [ADR 0028](0028-single-reference-price-catalog.md) |
 | 0022 | [프론트 이미지는 브랜치 머지 후 ECS에 자동 배포한다](0022-frontend-ecs-image-delivery.md) | Accepted |
 | 0023 | [dev 과거 시드는 독립 파일과 제한 속도로 적재하고 검증 후 SSO와 알림을 활성화한다](0023-dev-historical-dashboard-dataset.md) | Accepted |
@@ -55,7 +55,7 @@ ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영
 
 **후보에서 결정으로 옮겨간 것:**
 
-- 참조 단가의 평가 기준·출처와 저장 사용량 재평가 → [ADR 0008](0008-current-public-reference-valuation.md), 가격판 선택·버전 기록 제거와 저장 환산액 합산 → [ADR 0028](0028-single-reference-price-catalog.md)
+- 참조 단가의 평가 기준·출처와 저장 사용량 재평가 → [ADR 0008](0008-current-public-reference-valuation.md), 가격판 선택·버전 기록·가격판별 재평가 대상 선택 제거와 저장 환산액 합산 → [ADR 0028](0028-single-reference-price-catalog.md)
 - 텔레메트리 파이프라인의 소유 레포 → [ADR 0004](0004-telemetry-pipeline-repo-merge.md)
   (backend 레포로 병합. **대체됨(ADR 0004)** — 0003의 전체 병합 기각 결정은 더 이상 유효하지 않다)
 - OTLP 인증 모델 → [ADR 0001](0001-otlp-authentication-model.md)

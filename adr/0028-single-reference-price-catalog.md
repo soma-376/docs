@@ -67,4 +67,4 @@ ADR 0008은 재현과 재평가 대상 추적을 위해 불변 가격 프로파�
 - [ADR 0008](0008-current-public-reference-valuation.md) — 참조 단가의 출처와 평가 조건
 - [ADR 0011](0011-known-usage-subtotals.md) — 계산 가능한 관측 부분합
 - [Dashboard API 계약](../contracts/dashboard-api.md)의 사용 환산액
-- PROJ-290 — 가격표 버저닝을 제거하고 단일 참조 단가로 환산
+- [PROJ-290](https://team376.atlassian.net/browse/PROJ-290) — 가격표 버저닝을 제거하고 단일 참조 단가로 환산
