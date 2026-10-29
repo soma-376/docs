@@ -62,6 +62,11 @@ ingest는 지정 topic과 group의 Read/Describe를 갖는다. 별도 `offset-ad
 같은 stage의 지정 topic과 group에 Read/Describe를 갖는다. topic 설정은 KafkaTopic/Topic Operator가 소유한다.
 앱 ServiceAccount의 AWS JWT·DB·S3 권한은 Kafka ACL과 독립적으로 유지한다.
 
+`offset-admin`의 Topic Read는 [Kafka `FETCH`](https://kafka.apache.org/42/security/authorization-and-acls/#operations-and-resources-on-protocols)도 허용한다.
+따라서 같은 stage의 지정 topic에 72시간 보존 정책으로 저장되는 마스킹 전 envelope를 읽을 수 있다.
+이 기존 읽기 능력은 해당 stage의 제한된 수동 offset 운영 담당자에게 허용하는 권한 범위로 수용한다.
+offset만 다룰 수 있는 자격으로 표현하지 않으며, 원문 읽기를 ACL로 별도 차단한다고 보장하지 않는다.
+
 Kafka 4.2.2의 정상 consumer commit과 `Admin.alterConsumerGroupOffsets`를 통한 offset reset은
 모두 `OffsetCommit` 요청을 사용하며 Group Read와 Topic Read를 요구한다. 따라서 ingest의 정상 commit을
 허용하면서 같은 group의 offset reset만 Kafka ACL로 거부할 수 있다고 보장하지 않는다.
@@ -71,6 +76,8 @@ Kafka 4.2.2의 정상 consumer commit과 `Admin.alterConsumerGroupOffsets`를 �
 운영자가 실행하는 offset reset은 별도 `offset-admin` 자격과 수동 관리 Job으로 제한한다.
 이는 자격 공급과 실행 절차의 분리다. 앱에는 `offset-admin` Secret을 공급하지 않으며,
 수동 Job은 대상 stage·topic·group과 변경할 offset을 확인하고 group 중지·변경 전후 offset 대조 절차를 따른다.
+운영 절차는 offset·처리 상태 확인에 필요한 메타데이터만 남기고 마스킹 전 envelope의 본문을 콘솔·로그·파일로 덤프하지 않는다.
+`offset-admin` Secret은 이 수동 운영 경로에만 공급하며 일반 앱에는 mount하지 않는다.
 ACL 검증은 지정 외 topic/group 접근, Gateway 읽기와 ingest 쓰기의 거부를 확인한다.
 ingest의 같은 group reset 거부를 별도 ACL 보장이나 검증 완료 조건으로 삼지 않는다.
 

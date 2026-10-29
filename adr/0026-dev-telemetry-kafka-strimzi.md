@@ -25,6 +25,8 @@ ADR 0006의 dev 동기 적재 성공 응답·서버 배치 큐 금지 부분을 
   별도 offset 관리 자격을 분리한다. ingest와 offset-admin은 지정 topic·group의 Read/Describe를 공유한다.
   정상 commit과 관리용 offset reset이 모두 Group Read + Topic Read를 사용하는 `OffsetCommit` 요청이므로,
   별도 offset-admin Secret·수동 Job은 자격 공급과 운영 절차의 분리다. KafkaTopic만 토픽 설정을 소유한다.
+  offset-admin의 Topic Read는 FETCH도 허용하므로 같은 stage의 지정 topic에 보존되는 마스킹 전 envelope를 읽을 수 있다.
+  이 기존 능력을 제한된 수동 offset 운영 담당자의 권한 범위로 수용하며 일반 앱에는 그 Secret을 mount하지 않는다.
 - Strimzi가 같은 `pulsemetry-dev` namespace에서 CA·사용자 Secret을 생성·관리한다.
   이 Secret만 앱에 읽기 전용 mount하며 기존 AWS Secret의 CSI 공급은 바꾸지 않는다.
 - 인증서 365일·갱신 창 30일을 사용한다. 앱은 Secret metadata revision을 배포 annotation에 반영해
@@ -51,6 +53,8 @@ Kafka·스토리지·인증서·업그레이드의 운영 책임이 팀으로 �
 마스킹 전 envelope가 Kafka에 최대 72시간 저장되므로 접근 제한·디스크 암호화·보존 검증이 필수다.
 ingest에 정상 commit 권한을 주면서 같은 group의 offset reset만 ACL로 막는 경계는 제공하지 않는다.
 운영자의 reset은 앱과 분리된 자격·수동 Job으로 수행하고 대상 확인, group 중지, 변경 전후 offset 대조를 요구한다.
+offset-admin은 72시간 보존 정책의 마스킹 전 원문에 접근할 수 있다. 원문 조회를 별도 ACL로 금지한다고 주장하지 않으며,
+운영 절차에서는 필요한 메타데이터만 남기고 envelope 본문을 콘솔·로그·파일로 덤프하지 않는다.
 
 ## Acceptance Criteria
 
