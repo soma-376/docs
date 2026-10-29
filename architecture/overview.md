@@ -51,7 +51,7 @@ flowchart LR
     STATIC["프론트엔드 정적 저장소"]
   end
   subgraph REF["Reference Data"]
-    PRICE["Provider 공시 단가표"]
+    PRICE["서버 단일 참조 단가표<br>공식 확인 단가 + Codeburn 보완"]
     SCEN["시나리오 카탈로그"]
   end
   subgraph OBS["Observability"]
@@ -80,7 +80,7 @@ flowchart LR
   USERDB -. "조직별 마스킹 규칙" .-> MASK
   USERDB -. "팀 소속 as-of 조회" .-> ENR
   RAW -. "재처리" .-> ADP
-  PRICE -. "공시 단가" .-> ADP
+  PRICE -. "참조 단가" .-> ADP
   SCEN -. "시나리오 정의" .-> DASH
   COL -.-> OBS
   MASK -.-> OBS
@@ -101,7 +101,7 @@ flowchart LR
 | Telemetry Pipeline | Collector, Masker, Adapter, Enricher | 수집 데이터의 단방향 처리 파이프라인 |
 | Database | User Database, Signal Database (ClickHouse) | 조회용 정형 데이터 |
 | Object Storage | Raw Signal Object Storage, 프론트엔드 정적 저장소 | 마스킹 완료 시그널(재처리용)과 대시보드 빌드 산출물 |
-| Reference Data | Provider 공시 단가표, 시나리오 카탈로그 | 전역 참조 데이터. 조직에 종속되지 않는다 |
+| Reference Data | 서버 단일 참조 단가표, 시나리오 카탈로그 | 전역 참조 데이터. 조직에 종속되지 않는다 |
 | Observability | CloudWatch, Sentry | 처리 로그와 트레이싱. **데이터 평면이 아니다** |
 
 ### 짚어둘 것
@@ -113,8 +113,9 @@ flowchart LR
   그래서 Auth Service는 미들웨어가 아니라 Dashboard API와 같은 레이어의 서비스이며, 데스크탑을 상대하는 서버다.
 - **토큰이 유효하다는 것과 그 주체가 이 자원에 접근해도 된다는 것은 다르다.** 후자는 각 서비스의 security layer가 판정한다.
   경계는 인증까지만 책임진다.
-- **Provider 공시 단가표는 조직 계약이 아니다.** 벤더가 공표한 토큰당 단가이며 조직마다 다르지 않다.
-  조직별 계약 단가는 User Database에 있고 조회 시에만 쓰인다.
+- **서버 참조 단가표는 조직 계약이 아니다.** 공급자 공식 문서로 확인한 단가를 우선하고 Codeburn 0.9.24 고정 카탈로그로 보완한다
+  ([ADR 0008](../adr/0008-current-public-reference-valuation.md)·[ADR 0028](../adr/0028-single-reference-price-catalog.md)).
+  참조 단가는 조직마다 다르지 않다. 조직별 계약 단가는 User Database에 있고 조회 시에만 쓰인다.
 - **시나리오 카탈로그는 가용성을 담지 않는다.** 가용성은 Dashboard API가 조회 시 판정한다(I-14).
 - **Observability에 남는 것은 운영 로그이지 감사 로그가 아니다.** 감사 로그는 저장 대상·저장소가 정해지지 않아 범위 밖이다.
 - **인증 종결 지점은 애플리케이션 계층이다.** 경계(ALB)는 TLS 종단과 라우팅만 하고, 별도 auth 서버(외부 IdP)를 두지 않는다
@@ -129,7 +130,9 @@ flowchart LR
 
 공시 기준 금액은 조직마다 다르지 않으므로 미리 계산해도 안전하고 ClickHouse에서 그대로 집계할 수 있다.
 조직이 실제로 부담하는 금액은 계약에 종속되므로 조회 시 계산한다 — **계약이 바뀌어도 재적재가 필요 없다.**
-공시 단가 자체가 바뀌면 재처리로 소급 정정한다. 그래서 금액과 함께 **단가 버전**을 저장한다.
+서버는 단일 참조 단가표로 새 사용량을 계산하고, 저장된 USD 환산액을 집계한다([ADR 0028](../adr/0028-single-reference-price-catalog.md)).
+단가 변경은 코드 리뷰와 배포로 적용하며 단가 버전을 선택하거나 관측에 기록하지 않는다. 기존 금액은 자동으로 소급 정정하지 않는다.
+명시적인 운영 재평가를 수행한 경우 새 snapshot에서 읽는다. 집계액은 모든 과거 사용량을 현재 단가로 통일한 재평가액을 뜻하지 않는다.
 
 파이프라인에서 **조직별 마스킹 정책은 Masker**가 읽고, **팀 소속은 Enricher의 org provider**가 읽는다. 집계·비용 전용 저장소는 없다.
 

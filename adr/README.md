@@ -34,16 +34,17 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0005 | [텔레메트리 파이프라인 전 계층을 단일 Spring 애플리케이션으로 띄운다](0005-single-app-telemetry-topology.md) | Accepted; dev Kafka 부분 대체: [ADR 0026](0026-dev-telemetry-kafka-strimzi.md) |
 | 0006 | [OTLP ingest 는 영구 실패를 4xx 로, 일시 실패를 503 으로 돌려주고 배치 큐를 두지 않는다](0006-otlp-ingest-retry-and-status-contract.md) | Accepted; dev Kafka 부분 대체: [ADR 0026](0026-dev-telemetry-kafka-strimzi.md) |
 | 0007 | [분석 snapshot과 수집 생애주기 요약을 원본 저장소와 분리한다](0007-dashboard-snapshots-and-telemetry-lifetime-summary.md) | Proposed |
-| 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted |
-| 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted |
+| 0008 | [사용 환산액은 버전을 고정한 참조 단가로 평가한다](0008-current-public-reference-valuation.md) | Accepted — 가격판 선택·버전 기록·가격판별 재평가 대상 선택 부분 대체: [ADR 0028](0028-single-reference-price-catalog.md) |
+| 0011 | [계산 가능한 관측 부분합을 전체 확정값과 분리해 표시한다](0011-known-usage-subtotals.md) | Accepted — 가격판 합산 조건 부분 대체: [ADR 0028](0028-single-reference-price-catalog.md) |
 | 0022 | [프론트 이미지는 브랜치 머지 후 ECS에 자동 배포한다](0022-frontend-ecs-image-delivery.md) | Accepted |
 | 0023 | [dev 과거 시드는 독립 파일과 제한 속도로 적재하고 검증 후 SSO와 알림을 활성화한다](0023-dev-historical-dashboard-dataset.md) | Accepted |
 | 0024 | [dev 시드의 지연 감시는 왕복 시간과 HTTP 응답 요약 시간을 구분한다](0024-dev-seed-http-summary-latency.md) | Accepted |
 | 0025 | [초대 설치 링크와 사전 검증은 최종 enroll 소비와 분리한다](0025-invitation-installation-delivery.md) | Accepted |
 | 0026 | [dev 텔레메트리 비동기 수집은 Strimzi Kafka와 mTLS를 사용한다](0026-dev-telemetry-kafka-strimzi.md) | Accepted (offset 운영 분리·같은 stage 원문 읽기 범위 명시; 배포 검증 별도) |
 | 0027 | [설치 과정에서 데스크톱 앱을 함께 설치하고 정책 적용 상태를 표시한다](0027-install-desktop-and-report-policy-status.md) | Accepted |
+| 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 
-새 ADR은 `0028`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0029`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
@@ -54,7 +55,7 @@ ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영
 
 **후보에서 결정으로 옮겨간 것:**
 
-- 참조 단가의 평가 기준·출처·버전 관리와 저장 사용량 재평가 → [ADR 0008](0008-current-public-reference-valuation.md)
+- 참조 단가의 평가 기준·출처와 저장 사용량 재평가 → [ADR 0008](0008-current-public-reference-valuation.md), 가격판 선택·버전 기록·가격판별 재평가 대상 선택 제거와 저장 환산액 합산 → [ADR 0028](0028-single-reference-price-catalog.md)
 - 텔레메트리 파이프라인의 소유 레포 → [ADR 0004](0004-telemetry-pipeline-repo-merge.md)
   (backend 레포로 병합. **대체됨(ADR 0004)** — 0003의 전체 병합 기각 결정은 더 이상 유효하지 않다)
 - OTLP 인증 모델 → [ADR 0001](0001-otlp-authentication-model.md)
@@ -81,7 +82,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 14 (템플릿 제외) | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 16 (템플릿 제외) | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 
