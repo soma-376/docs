@@ -42,7 +42,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0025 | [초대 설치 링크와 사전 검증은 최종 enroll 소비와 분리한다](0025-invitation-installation-delivery.md) | Accepted |
 | 0026 | [dev 텔레메트리 비동기 수집은 Strimzi Kafka와 mTLS를 사용한다](0026-dev-telemetry-kafka-strimzi.md) | Accepted (배포 검증 별도) |
 
-새 ADR은 `0027`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+| 0027 | [설치 과정에서 데스크톱 앱을 함께 설치하고 정책 적용 상태를 표시한다](0027-install-desktop-and-report-policy-status.md) | Accepted |
+
+새 ADR은 `0028`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 

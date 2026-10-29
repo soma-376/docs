@@ -110,7 +110,7 @@ internal/
 contracts/*.schema.json     ★ manifest·envelope JSON Schema — 계약의 기계 판독 원본
 ```
 
-- **소유**: 로컬 수신기, 로컬 집계·보존, 벤더 도구 설정 배선, 데몬 라이프사이클,
+- **소유**: 로컬 수신기, 로컬 집계·보존, 벤더 도구 설정 배선, 데몬 라이프사이클, GUI 설치·정책 상태 표시,
   그리고 **manifest 계약 스키마 파일**(`contracts/enrollment-manifest.schema.json`).
 - **소유하지 않음**: 서버 측 발급 로직, 조직 정책의 결정.
 - 데몬은 프라이버시 **1차** 집행 지점이다. 로컬 배선은 의도적으로 과수집하고, 상위 전송 직전 forwarder가
