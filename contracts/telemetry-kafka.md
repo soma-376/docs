@@ -1,6 +1,6 @@
 # 계약 — dev Kafka 비동기 수집과 mTLS 배포
 
-당사자는 `pulsemetry-backend`와 `infra`다. 상태는 **변경 중 — dev 배포·전환 검증 전**이다.
+당사자는 `pulsemetry-backend`와 `infra`다. 배포·검증 상태는 아래 현재 상태 절을 따른다.
 [ADR 0026](../adr/0026-dev-telemetry-kafka-strimzi.md)이 dev 비동기 경로에 적용되며
 기존 `telemetry-ingest.md`의 동기 HTTP 경로는 복구 경로로 유지한다.
 
@@ -116,17 +116,25 @@ Kafka 안에서는 `tenant_id:installation_id` key에 따른 partition 순서를
 그 경로의 `event_id = record_id` 계약을 보존한다. 현재 분석 테이블의 `observation_id`로 이름을 바꾸거나
 두 식별자를 서로 변환하지 않는다. Kafka 전환이 기존 `enriched_events` 데이터를 이관하거나 삭제하지 않는다.
 
-HTTP→dual→Kafka 전환 실패 시 ALB와 ingest를 기존 HTTP 모드로 복구하며 Strimzi PVC와 offset을 유지한다.
-사용자 승인에 따라 기존 MSK 데이터·offset 이관 없이 새 경로 안정화 후 MSK와 전용 리소스를 삭제한다.
+HTTP 복구 시 main topic/group·mTLS 설정의 ingest를 dual로 배포하고 HTTP 대상 연결을 확인한 뒤
+ALB를 복구 경로로 전환한다. Strimzi PVC와 offset 및 MSK 철거 이후의 네트워크 구성을 유지한다.
+옛 MSK retain 배포 입력으로 MSK를 재생성하지 않는다.
 
 ## 현재 상태와 검증
 
-문서·코드 변경은 실제 연결 성공 증거가 아니다. PROJ-283·284의 구현과 PROJ-285의 실제 배포·검증을
-구분하며, HTTP 복구 경로를 유지한 채 아래 미해결 검증을 수행한다.
+**dev Strimzi/mTLS 배포·전환 검증은 [PROJ-285](https://team376.atlassian.net/browse/PROJ-285)의 범위에서 완료됐다.**
+validation/main 실제 JWT 요청의 Gateway ACK→Kafka record→consumer commit→ClickHouse와
+sampled 요청의 연결 trace·로그를 확인했다. 30분 안정화의 공개 요청 31회는 모두 HTTP 200과
+ClickHouse 논리 행 및 해당 record 이후 commit을 확인했다. 장애·ACL·크기 경계, PVC 재연결과
+인증서 갱신 후 재접속의 시험 범위와 결과는 PROJ-285 기록을 따른다.
+
+사용자 승인에 따라 기존 MSK 데이터·offset을 이관하지 않고 MSK와 전용 리소스를 철거했다.
+최종 철거 구성은 [infra #85](https://github.com/soma-376/infra/pull/85)에 반영됐다.
+HTTP 복구 입력은 보존했으며 실제 rollback 실행, 모든 요청의 trace sampling,
+최대 처리량·SLO 또는 과거 모든 ClickHouse 행의 동일성까지 검증했다는 뜻은 아니다.
 
 ## 미해결
 
-dev 실제 설치·수집 전환은 아직 검증되지 않았다. PROJ-285에서 validation/main의 실제 JWT 요청,
-Kafka ACK→consume→commit→ClickHouse와 로그·trace 연결, 30분 안정화, 장애·ACL·크기 경계,
-PVC 재연결 및 인증서 갱신 후 재접속을 확인해야 한다. HTTP·로그인·기존 ClickHouse 보존 결과는
-Kafka 검증 결과와 구분해 기록한다. 이 완료 증거를 확보한 뒤 기존 MSK를 순차 삭제한다.
+관측 구성의 인수 판정(PROJ-191·255·256)은 Kafka 전환 결과와 구분한다.
+Strimzi 지표·로그·trace 연결, 네트워크 차단과 보존 검증의 최신 결과 및 남은 항목은
+[infra 관측 런북](https://github.com/soma-376/infra/blob/develop/docs/runbooks/dev-observability.md)을 따른다.
