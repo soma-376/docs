@@ -17,12 +17,12 @@ E2E 검증에서 확인된 차단 결함 4건 중 3건이 "구간 내부의 버�
 
 | 계약 | 당사자 | 상태 |
 |---|---|---|
+| [`generated-values-sync.md`](generated-values-sync.md) | `pulsemetry-backend` → `infra` → private `infra-generated-values` | 변경 중 — GitOps 설계 Accepted, 구현·실제 인수 별도 |
 | [`telemetry-kafka.md`](telemetry-kafka.md) | `pulsemetry-backend` ↔ `infra` | dev Strimzi/mTLS 전환 검증 완료 — PROJ-285 범위, 관측 인수 별도 |
 | [`enrollment-api.md`](enrollment-api.md) | `telemetryctl` ↔ `pulsemetry-backend` | 확정 |
 | [`telemetry-ingest.md`](telemetry-ingest.md) | `telemetryctl` → 현재 `ai-telemetry-pipeline`, 목표 `pulsemetry-backend` (배포: `infra`) | 현재 배포 경로 B3 미해결; 목표 경로 상태·재시도는 §8 |
 | [`data-model.md`](data-model.md) | `pulsemetry-backend`(DDL) ↔ 현재 `ai-telemetry-pipeline`, 목표 backend ingest 모듈(읽기); 설계도 `rdb-schema` | 확정 — 소비자 전환은 배포와 함께 |
 | [`dashboard-api.md`](dashboard-api.md) | frontend(예정) ↔ backend | **골격** |
-| [`generated-values-sync.md`](generated-values-sync.md) | `infra` → `infra-generated-values` | 변경 중 — private 사본 공급 계약·ADR과 관련 문서 리뷰 |
 
 ## 규칙
 

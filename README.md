@@ -30,8 +30,8 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 | [`product/roadmap.md`](product/roadmap.md) | 마일스톤 골격 | 골격 |
 | [`architecture/overview.md`](architecture/overview.md) | 컴포넌트 지도·데이터 흐름·아키텍처 불변식 | 증류 완료 (원본 `archive/SA.md`) |
 | [`architecture/repos.md`](architecture/repos.md) | 레포별 역할·경계·현재 상태 | 조사 기반 신규 |
-| [`contracts/`](contracts/README.md) | 레포 간 계약 5건 | 개별 상태는 계약 인덱스 참조, generated values 공급 계약 변경 중 |
-| [`adr/README.md`](adr/README.md) | 크로스레포 ADR 인덱스 + 전 레포 카탈로그 | 크로스레포 ADR 14건, 채택·제안·대체 상태는 인덱스 참조 |
+| [`contracts/`](contracts/README.md) | 레포 간 계약 | 각 계약의 상태·실제 검증 범위를 인덱스에서 확인 |
+| [`adr/README.md`](adr/README.md) | 크로스레포 ADR 인덱스 + 전 레포 카탈로그 | 설계 채택과 실제 적용 상태를 구분 |
 | [`glossary.md`](glossary.md) | 도메인 용어 | 골격 |
 | [`onboarding.md`](onboarding.md) | 클론 배치·에이전트 셋업·첫 PR | 완성 |
 | [`archive/`](archive/README.md) | 증류 이전 원본 PLAN/SA/AA/IA | **기준 문서 아님** |
@@ -45,6 +45,16 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 3. **기존 40여 건을 이관하는 이득은 검색 편의뿐이고, 대가는 링크 파손이다.** 검색은 이 허브의 카탈로그와 `adr` 스킬이 해결한다.
 
 크로스레포 결정만 반대로 중앙이 소유한다. 단일 레포에 두면 다른 레포에서 비가시적이고 소유가 모호해지기 때문이다.
+
+## dev GitOps 계약의 현재 상태
+
+[ADR 0030](adr/0030-dev-gitops-delivery.md)은 네 앱 완료 manifest와 검증된 C/V/B 선택을 통한
+GitOps 설계다. [공급 계약](contracts/generated-values-sync.md)은 generated 사본·Updater의 image 필드
+예외·candidate·snapshot·desired의 단일 계약이다. PROJ-280·281·286 문서는 실제 자동화·인수 완료를 뜻하지 않는다.
+이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을
+병합한 이력을 기반으로 한다. 기존 사본 계약을 계승하고 GitOps 예외·승격 규칙을 같은 계약에 반영한다.
+[PR #11](https://github.com/soma-376/docs/pull/11)의 EKS 배포 제안은 미병합 참고이며 선행 조건이 아니다.
+로컬 브랜치 계승은 PR의 원격 갱신·병합·종료 또는 실제 배포를 뜻하지 않는다.
 
 ## 규칙
 

@@ -54,3 +54,16 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 협업 컨벤션 v2의 브랜치명·커밋 형식은 그대로 따르되, 베이스만 develop이 아니라 main이다.
 `.github/workflows/`의 PR 자동화(제목 채움·담당자 지정)도 main 대상 PR에 걸려 있다.
+
+## PROJ-281 dev GitOps 배포 계약
+
+[ADR 0030](adr/0030-dev-gitops-delivery.md)과 [generated 공급 계약](contracts/generated-values-sync.md)은
+승인된 설계다. backend의 같은 SHA·run/attempt 네 앱 완료 manifest를 검증하고, candidate/dev의
+image.ref만 Updater가 수정한다. infra가 C·V·B를 검증해 main에 snapshot V를 먼저 게시한 뒤
+별도 P에서 desired와 Application source를 함께 선택한다. 현재 상태·구현·실제 인수를 구분한다.
+Argo/Updater 자체는 수동 Helm, 인수한 dev Application은 auto sync/self-heal·prune off다.
+PROJ-281은 최신 main을 병합한 PR #16의 PROJ-276 선행 브랜치를 계승한다. 기존 generated 사본
+ADR 0026과 Kafka ADR 0026은 파일명을 유지하므로 범위·파일 링크로 구분한다. 사본 원칙은
+ADR 0030이 계승하고 image 필드 예외·V/P 승격을 확장한다. PR #11은 미병합 참고이며
+선행 조건이 아니다. ADR 0023은 과거 시드다. 로컬 계승과 원격 PR 병합·실제 인수를 구분한다.
+다음 ADR은 `0031`부터이며 실제 작성 전 인덱스를 다시 확인한다.

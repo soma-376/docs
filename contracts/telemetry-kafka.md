@@ -82,8 +82,9 @@ ACL 검증은 지정 외 topic/group 접근, Gateway 읽기와 ingest 쓰기의 
 ingest의 같은 group reset 거부를 별도 ACL 보장이나 검증 완료 조건으로 삼지 않는다.
 
 CA·사용자 인증서는 유효기간 365일, 갱신 창 30일이다. Secret UID/resourceVersion으로 만든
-`kafka.tlsRevision` annotation을 명시적 Helm 배포에 반영한다. 자동 갱신만으로 외부 앱이
-새 인증서를 읽었다고 판정하지 않는다. 현재 replica 1/Recreate의 중단 가능성을 인계한다.
+`kafka.tlsRevision` annotation을 명시적 재배포에 반영한다. GitOps 인수 후에는
+[generated 공급 계약](generated-values-sync.md)의 고정 V와 desired P로 metadata·배포 선택을 함께 갱신한다.
+자동 갱신만으로 외부 앱이 새 인증서를 읽었다고 판정하지 않는다. 현재 replica 1/Recreate의 중단 가능성을 인계한다.
 
 ## 전환과 재전달
 
@@ -121,6 +122,10 @@ ALB를 복구 경로로 전환한다. Strimzi PVC와 offset 및 MSK 철거 이�
 옛 MSK retain 배포 입력으로 MSK를 재생성하지 않는다.
 
 ## 현재 상태와 검증
+
+GitOps 설계는 [ADR 0030](../adr/0030-dev-gitops-delivery.md)으로 승인됐지만 실제 인수는 별도다.
+인수 전에는 기존 Helm 수동 배포·인증서 metadata 반영 절차를 유지한다. 아래 Strimzi 전환 검증은
+Argo CD·Image Updater·candidate 승격의 완료 증거가 아니다.
 
 **dev Strimzi/mTLS 배포·전환 검증은 [PROJ-285](https://team376.atlassian.net/browse/PROJ-285)의 범위에서 완료됐다.**
 validation/main 실제 JWT 요청의 Gateway ACK→Kafka record→consumer commit→ClickHouse와
