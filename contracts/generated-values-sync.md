@@ -5,7 +5,7 @@
 | 당사자 | **`infra`** (생성·검증·공급·배포 책임) → **`infra-generated-values`** (접근 제한 동기화 사본) |
 | 사본 저장소 | [`soma-376/infra-generated-values`](https://github.com/soma-376/infra-generated-values), private, 기본 브랜치 `main` |
 | 생성기 | `infra/scripts/eks-values.mjs` |
-| 관련 ADR | [허브 ADR 0026 — 생성된 values만 private 레포에 동기화한다](../adr/0026-generated-values-private-sync-copy.md) |
+| 관련 ADR | [허브 ADR 0030 — 생성된 values만 private 레포에 동기화한다](../adr/0030-generated-values-private-sync-copy.md) |
 | 상태 | 변경 중 — ADR과 공급 계약 리뷰, 관련 레포 문서 반영 후 확정 |
 
 이 계약은 생성 결과의 공급 경계와 revision 연결을 정한다. 입력·생성기·chart·배포 정책과 절차는

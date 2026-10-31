@@ -40,15 +40,15 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0023 | [dev 과거 시드는 독립 파일과 제한 속도로 적재하고 검증 후 SSO와 알림을 활성화한다](0023-dev-historical-dashboard-dataset.md) | Accepted |
 | 0024 | [dev 시드의 지연 감시는 왕복 시간과 HTTP 응답 요약 시간을 구분한다](0024-dev-seed-http-summary-latency.md) | Accepted |
 | 0025 | [초대 설치 링크와 사전 검증은 최종 enroll 소비와 분리한다](0025-invitation-installation-delivery.md) | Accepted |
-| 0026 (generated 사본) | [생성된 Helm values만 private 레포에 동기화한다](0026-generated-values-private-sync-copy.md) | Proposed |
-| 0026 (Kafka) | [dev 텔레메트리 비동기 수집은 Strimzi Kafka와 mTLS를 사용한다](0026-dev-telemetry-kafka-strimzi.md) | Accepted (offset 운영 분리·같은 stage 원문 읽기 범위 명시; 배포 검증 별도) |
+| 0026 | [dev 텔레메트리 비동기 수집은 Strimzi Kafka와 mTLS를 사용한다](0026-dev-telemetry-kafka-strimzi.md) | Accepted (offset 운영 분리·같은 stage 원문 읽기 범위 명시; 배포 검증 별도) |
 | 0027 | [설치 과정에서 데스크톱 앱을 함께 설치하고 정책 적용 상태를 표시한다](0027-install-desktop-and-report-policy-status.md) | Accepted |
 | 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
+| 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed |
 
-새 ADR은 `0030`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0031`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
-병행 브랜치에서 작성된 두 ADR 0026은 기존 파일명·링크를 보존한다. 번호만으로 인용하지 않고 generated 사본 또는 Kafka 범위와 파일 링크로 구분한다. generated 사본 제안만으로 Argo CD 연결·자동 배포를 채택한 것으로 해석하지 않는다.
+ADR 0030은 private generated values 사본 공급에 대한 제안이다. Argo CD 연결·자동 배포를 채택한 것으로 해석하지 않는다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 

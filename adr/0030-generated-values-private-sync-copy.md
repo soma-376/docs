@@ -1,4 +1,4 @@
-# 0026. 생성된 Helm values만 private 레포에 동기화한다
+# 0030. 생성된 Helm values만 private 레포에 동기화한다
 
 ## Status
 

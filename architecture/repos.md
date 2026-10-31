@@ -32,7 +32,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
 | [`infra`](#infra) | AWS CDK v2 (TS) | **모든 AWS 리소스**, collector 배포 설정 | `develop` | 23건 |
-| [`infra-generated-values`](#infra-generated-values) | 생성된 YAML / Markdown | **생성된 Helm values의 private 동기화 사본** | `main` | [허브 ADR 0026](../adr/0026-generated-values-private-sync-copy.md) (Proposed) |
+| [`infra-generated-values`](#infra-generated-values) | 생성된 YAML / Markdown | **생성된 Helm values의 private 동기화 사본** | `main` | [허브 ADR 0030](../adr/0030-generated-values-private-sync-copy.md) (Proposed) |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -185,7 +185,7 @@ values를 접근 제한 상태로 보관하는 private 레포다. 기본 브랜�
   역방향 동기화는 하지 않으며, 사용할 때 대응 infra revision을 확인한다.
 - Argo CD의 읽기 대상이 될 수 있지만 파일 공급은 연결·sync·배포 완료를 뜻하지 않는다.
 - 계약: [`generated-values-sync.md`](../contracts/generated-values-sync.md).
-  결정의 근거: [허브 ADR 0026](../adr/0026-generated-values-private-sync-copy.md).
+  결정의 근거: [허브 ADR 0030](../adr/0030-generated-values-private-sync-copy.md).
 
 ### 현재 상태
 
