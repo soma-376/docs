@@ -44,8 +44,11 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0027 | [설치 과정에서 데스크톱 앱을 함께 설치하고 정책 적용 상태를 표시한다](0027-install-desktop-and-report-policy-status.md) | Accepted |
 | 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
+| 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed |
 
-새 ADR은 `0030`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0031`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+
+ADR 0030은 private generated values 사본 공급에 대한 제안이다. Argo CD 연결·자동 배포를 채택한 것으로 해석하지 않는다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
@@ -83,7 +86,7 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |
-| `docs` (이 레포) | `adr/` | 위 표 | 16 (템플릿 제외) | 크로스레포·제품 결정만. **영어 슬러그** |
+| `docs` (이 레포) | `adr/` | 위 표 | 위 인덱스 참조 | 크로스레포·제품 결정만. **영어 슬러그** |
 
 `rdb-schema`·`otel-collector`·`.github`·`agent-skills`에는 ADR이 없다.
 

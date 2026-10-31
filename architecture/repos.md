@@ -15,6 +15,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 ├── telemetryctl/
 ├── ai-telemetry-pipeline/
 ├── infra/
+├── infra-generated-values/      ← 접근 권한이 있는 운영자용 private 사본
 ├── rdb-schema/
 ├── otel-collector/              ← superseded
 ├── team-376-llm-wiki/
@@ -31,6 +32,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
 | [`infra`](#infra) | AWS CDK v2 (TS) | **모든 AWS 리소스**, collector 배포 설정 | `develop` | 23건 |
+| [`infra-generated-values`](#infra-generated-values) | 생성된 YAML / Markdown | **생성된 Helm values의 private 동기화 사본** | `main` | [허브 ADR 0030](../adr/0030-generated-values-private-sync-copy.md) (Proposed) |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -40,6 +42,9 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 코드 레포 4종(`pulsemetry-backend`·`telemetryctl`·`ai-telemetry-pipeline`·`infra`)만 협업 컨벤션 v2의
 develop/squash 플로우를 따른다. `docs`는 develop 없이 티켓 브랜치에서 `main`으로 직접 PR을 열고,
 `.github/workflows/`의 PR 자동화가 main 대상 PR에 적용된다.
+`infra-generated-values`는 별도의 private 사본 저장소이며 기본 브랜치는 `main`이다.
+초기 README·AGENTS는 해당 브랜치에 직접 기록한다. 사본 공급 규칙은
+[`generated-values-sync.md`](../contracts/generated-values-sync.md)를 따른다.
 
 ---
 
@@ -159,12 +164,33 @@ config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
 ```
 
 - **소유**: 모든 AWS 리소스, **배포용 collector 설정**, 배포 역할.
+- 생성된 values의 입력·생성기·chart·배포 정책과 절차도 이 레포가 소유한다. private 사본 공급은
+  [generated values 계약](../contracts/generated-values-sync.md)을 따르며 소유권을 이전하지 않는다.
 - **소유하지 않음**: 앱 코드. 앱 레포 CI는 이미지 빌드 → ECR push → `ecs update-service --force-new-deployment`까지만 한다.
   **태스크 정의를 바꾸려면 반드시 이 레포를 경유한다.**
 - 폴더 의존 방향은 `prod → common`, `dev → common`, `cicd → common` **단방향**. `prod ↔ dev` 상호 참조 금지.
 - region은 `ap-northeast-2`. account는 `CDK_DEFAULT_ACCOUNT`에서만 주입하고 코드·문서에 기록하지 않는다.
 - **`AGENTS.md`가 이 레포의 실질 핸드오프 문서다.** 3장(불변 규칙)과 5장(남은 작업)을 먼저 읽는다.
 - ADR 번호 `0020`은 로그 그룹 정책용으로 **예약**돼 있다. 새 ADR은 `0025`부터.
+
+## infra-generated-values
+
+[`soma-376/infra-generated-values`](https://github.com/soma-376/infra-generated-values)는 생성된 Helm
+values를 접근 제한 상태로 보관하는 private 레포다. 기본 브랜치는 `main`이다.
+
+- **소유**: `dev/generated/`의 허용 YAML 사본과 `dev/infra-commit.txt`의 대응 infra revision.
+  README·AGENTS는 목적·수정 경로·담당 주체와 허브 계약을 안내한다.
+- **소유하지 않음**: 원본 입력, 생성기, chart, 배포 정책과 절차. 이 네 항목은 `infra`에 남는다.
+- infra 운영 담당자가 원본 수정 → 생성 → 검증 → 단방향 동기화를 수행한다. 사본 직접 수정과
+  역방향 동기화는 하지 않으며, 사용할 때 대응 infra revision을 확인한다.
+- Argo CD의 읽기 대상이 될 수 있지만 파일 공급은 연결·sync·배포 완료를 뜻하지 않는다.
+- 계약: [`generated-values-sync.md`](../contracts/generated-values-sync.md).
+  결정의 근거: [허브 ADR 0030](../adr/0030-generated-values-private-sync-copy.md).
+
+### 현재 상태
+
+PROJ-275는 계약·안내 문서와 기본 브랜치 구성을 다룬다. 계약과 ADR은 리뷰 중이며 최초 문서 구성에
+실제 generated values는 포함하지 않는다. Argo CD 연결과 실제 공급·배포 검증은 별도 운영 작업이다.
 
 ## rdb-schema
 
