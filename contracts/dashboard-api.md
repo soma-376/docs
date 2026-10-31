@@ -2,12 +2,12 @@
 
 | 항목 | 내용 |
 |---|---|
-| 당사자 | **frontend(레포 미생성)** ↔ **backend(소재 미정)** |
-| 상태 | **골격.** 착수 전이며 확정된 것이 없다 |
+| 당사자 | [pulsemetry-frontend](https://github.com/soma-376/pulsemetry-frontend) ↔ [pulsemetry-backend](https://github.com/soma-376/pulsemetry-backend) |
+| 상태 | **부분 확정.** 사용 환산액 절은 PROJ-290의 [backend #53](https://github.com/soma-376/pulsemetry-backend/pull/53)·[frontend #31](https://github.com/soma-376/pulsemetry-frontend/pull/31)에 반영됐다. 나머지 API 명세는 골격이다 |
 
-> **이 문서는 자리표시자다.** 여기 적힌 것은 [`../architecture/overview.md`](../architecture/overview.md)에서
-> 이미 결정된 구조적 제약이며, 실제 엔드포인트·필드는 아직 하나도 정해지지 않았다.
-> 착수 시 이 문서를 [`enrollment-api.md`](enrollment-api.md) 수준으로 채운다.
+> **사용 환산액 절을 제외한 API 명세는 자리표시자다.** 여기에는 [`../architecture/overview.md`](../architecture/overview.md)에서
+> 이미 결정된 구조적 제약을 정리했다. 엔드포인트별 계약은
+> [`enrollment-api.md`](enrollment-api.md) 수준으로 보완한다.
 
 ## 1. 이미 정해진 제약
 
@@ -46,14 +46,20 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 
 ## 사용 환산액
 
-[ADR 0008](../adr/0008-current-public-reference-valuation.md)에 따라 사용 환산액은 버전을 고정한 참조 단가표로 계산한
-Standard/global/USD 토큰 평가 금액이다. 실제 청구액·조직 계약액·벤더 보고 금액이 아니다.
+[ADR 0028](../adr/0028-single-reference-price-catalog.md)에 따라 서버는 단일 참조 단가표로 새 사용량을 계산한다.
+사용 환산액은 각 관측에 저장된 Standard/global/USD 토큰 평가 금액의 합이다. 실제 청구액·조직 계약액·벤더 보고 금액이 아니다.
 
 - 단가표는 공급자 공식 문서로 확인한 모델 단가를 우선하고, 나머지는 Codeburn 0.9.24 고정 카탈로그를 쓴다.
   별칭(`codex-auto-review → gpt-5.5`)은 환산 기준의 선택이며 실제 모델 동일성을 뜻하지 않는다.
-  출처·기준 시각·평가 조건은 `pricing_version`의 불변 프로파일에서 확인한다.
+  출처·평가 조건·별칭은 단일 카탈로그의 문서와 코드에서 관리한다([ADR 0008](../adr/0008-current-public-reference-valuation.md)).
+- 가격판을 선택하지 않으며 관측·snapshot에 가격판 식별자를 새로 기록하지 않는다. API는 `pricingVersion`을 반환하지 않고,
+  `pricing_version_mixed`를 확인 불가 사유로 사용하지 않는다. 프론트는 가격판 일치 여부를 검사하거나 표시하지 않는다.
 - Claude 캐시 생성은 5분 쓰기 단가로 평가한다. 실제 TTL 판정이 아니다.
 - 검증된 Claude Code(exclusive)와 Codex(inclusive) 사용량은 같은 비중복 토큰 성분으로 합산한다. 다른 의미 프로파일은
   합산하지 않는다. 캐시·reasoning을 이중 합산하거나 미보고 성분을 0으로 채우지 않는다.
-- 단가표에 없는 모델, 미검증 토큰 의미, 필요한 성분의 누락은 null이다. 서로 다른 가격판이 섞이면 전체 금액은 null이다.
-- 저장된 사용량을 재평가하면 새 snapshot에서 읽는다. 계산 가능한 부분합은 [ADR 0011](../adr/0011-known-usage-subtotals.md)을 따른다.
+- 단가표에 없는 모델, 미검증 토큰 의미, 필요한 성분의 누락은 null이다. 해당 범위에 미가격 행이 있으면 전체 환산액은 null이다.
+  계산 가능한 행의 저장된 금액은 별도 부분합으로 제공한다([ADR 0011](../adr/0011-known-usage-subtotals.md)).
+- 과거 가격표의 차이는 전체값·부분합·평균·비중·비교를 막지 않는다. 비교 기간이나 다른 그룹에 있던 가격표 차이도
+  선택한 범위의 금액을 가리지 않는다. 기간 완전성·관측 공백·미가격 규칙은 유지한다.
+- 기존 금액과 원천 사용량은 보존한다. 단가표 변경으로 과거 금액을 자동 재계산하지 않으므로 합계는 과거 사용량을 모두
+  현재 단가로 다시 평가한 값이 아니다. 저장된 사용량을 명시적으로 재평가한 경우 새 snapshot에서 읽는다.

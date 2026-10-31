@@ -51,7 +51,7 @@ flowchart LR
     STATIC["프론트엔드 정적 저장소"]
   end
   subgraph REF["Reference Data"]
-    PRICE["Provider 공시 단가표"]
+    PRICE["서버 단일 참조 단가표<br>공식 확인 단가 + Codeburn 보완"]
     SCEN["시나리오 카탈로그"]
   end
   subgraph OBS["Observability"]
@@ -80,7 +80,7 @@ flowchart LR
   USERDB -. "조직별 마스킹 규칙" .-> MASK
   USERDB -. "팀 소속 as-of 조회" .-> ENR
   RAW -. "재처리" .-> ADP
-  PRICE -. "공시 단가" .-> ADP
+  PRICE -. "참조 단가" .-> ADP
   SCEN -. "시나리오 정의" .-> DASH
   COL -.-> OBS
   MASK -.-> OBS
@@ -101,7 +101,7 @@ flowchart LR
 | Telemetry Pipeline | Collector, Masker, Adapter, Enricher | 수집 데이터의 단방향 처리 파이프라인 |
 | Database | User Database, Signal Database (ClickHouse) | 조회용 정형 데이터 |
 | Object Storage | Raw Signal Object Storage, 프론트엔드 정적 저장소 | 마스킹 완료 시그널(재처리용)과 대시보드 빌드 산출물 |
-| Reference Data | Provider 공시 단가표, 시나리오 카탈로그 | 전역 참조 데이터. 조직에 종속되지 않는다 |
+| Reference Data | 서버 단일 참조 단가표, 시나리오 카탈로그 | 전역 참조 데이터. 조직에 종속되지 않는다 |
 | Observability | CloudWatch, Sentry | 처리 로그와 트레이싱. **데이터 평면이 아니다** |
 
 ### 짚어둘 것
@@ -113,8 +113,9 @@ flowchart LR
   그래서 Auth Service는 미들웨어가 아니라 Dashboard API와 같은 레이어의 서비스이며, 데스크탑을 상대하는 서버다.
 - **토큰이 유효하다는 것과 그 주체가 이 자원에 접근해도 된다는 것은 다르다.** 후자는 각 서비스의 security layer가 판정한다.
   경계는 인증까지만 책임진다.
-- **Provider 공시 단가표는 조직 계약이 아니다.** 벤더가 공표한 토큰당 단가이며 조직마다 다르지 않다.
-  조직별 계약 단가는 User Database에 있고 조회 시에만 쓰인다.
+- **서버 참조 단가표는 조직 계약이 아니다.** 공급자 공식 문서로 확인한 단가를 우선하고 Codeburn 0.9.24 고정 카탈로그로 보완한다
+  ([ADR 0008](../adr/0008-current-public-reference-valuation.md)·[ADR 0028](../adr/0028-single-reference-price-catalog.md)).
+  참조 단가는 조직마다 다르지 않다. 조직별 계약 단가는 User Database에 있고 조회 시에만 쓰인다.
 - **시나리오 카탈로그는 가용성을 담지 않는다.** 가용성은 Dashboard API가 조회 시 판정한다(I-14).
 - **Observability에 남는 것은 운영 로그이지 감사 로그가 아니다.** 감사 로그는 저장 대상·저장소가 정해지지 않아 범위 밖이다.
 - **인증 종결 지점은 애플리케이션 계층이다.** 경계(ALB)는 TLS 종단과 라우팅만 하고, 별도 auth 서버(외부 IdP)를 두지 않는다
@@ -129,7 +130,9 @@ flowchart LR
 
 공시 기준 금액은 조직마다 다르지 않으므로 미리 계산해도 안전하고 ClickHouse에서 그대로 집계할 수 있다.
 조직이 실제로 부담하는 금액은 계약에 종속되므로 조회 시 계산한다 — **계약이 바뀌어도 재적재가 필요 없다.**
-공시 단가 자체가 바뀌면 재처리로 소급 정정한다. 그래서 금액과 함께 **단가 버전**을 저장한다.
+서버는 단일 참조 단가표로 새 사용량을 계산하고, 저장된 USD 환산액을 집계한다([ADR 0028](../adr/0028-single-reference-price-catalog.md)).
+단가 변경은 코드 리뷰와 배포로 적용하며 단가 버전을 선택하거나 관측에 기록하지 않는다. 기존 금액은 자동으로 소급 정정하지 않는다.
+명시적인 운영 재평가를 수행한 경우 새 snapshot에서 읽는다. 집계액은 모든 과거 사용량을 현재 단가로 통일한 재평가액을 뜻하지 않는다.
 
 파이프라인에서 **조직별 마스킹 정책은 Masker**가 읽고, **팀 소속은 Enricher의 org provider**가 읽는다. 집계·비용 전용 저장소는 없다.
 
@@ -139,16 +142,26 @@ flowchart LR
 
 ### A — 텔레메트리 수집 (쓰기)
 
+Dev의 비동기 수집 경계는 [ADR 0026](../adr/0026-dev-telemetry-kafka-strimzi.md)과
+[Kafka 계약](../contracts/telemetry-kafka.md)을 따른다. JWT Gateway → Strimzi Kafka → ingest 순서이며,
+아래 처리 모듈들은 계속 ingest 프로세스 안에서 실행된다. 성공 ACK는 Kafka 내구성 기록 완료를 뜻한다.
+아래 dev 경로는 합의한 전환 목표이며 실제 배포·검증 상태는 Kafka 계약의 현재 상태 절에서 관리한다.
+
 ```
-AI tool → Desktop Application → API Gateway → Collector → Masker → Adapter → Enricher → Signal Database
-              └→ Local Store                              └────────────────→ Raw Signal Object Storage
+dev Kafka: AI tool → Desktop Application → ALB → JWT Gateway → Strimzi Kafka → ingest
+                        └→ Local Store
+HTTP 복구: Desktop Application → ALB → ingest HTTP 수신기
+
+ingest 내부: Collector → Masker → Adapter → Enricher → Signal Database
+                           └──────────────────────→ Raw Signal Object Storage
 ```
 
 - AI tool → Desktop은 **push**다. 벤더의 OTel exporter가 데몬의 loopback 수신기로 보낸다. 로그 파일 감시가 아니다.
 - 데몬은 배치를 두 갈래로 나눈다: ① 원본 바이트 → 상위 전달(프라이버시 1차 집행) ② 정규화 결과 → Local Store(개인용).
 - 파이프라인은 단방향 4단계다. 정상 흐름에 되돌아오는 경로가 없다.
 - **네 단계는 한 애플리케이션 안의 모듈이고 전달은 in-process 호출이다**([`../adr/0005-single-app-telemetry-topology.md`](../adr/0005-single-app-telemetry-topology.md)).
-  단계는 배포 경계가 아니라 모듈 경계로 나뉘며, 사이에 네트워크 홉도 큐도 두지 않는다.
+  ingest 내부 단계는 모듈 경계로 나뉘며, 그 사이에는 네트워크 홉도 큐도 두지 않는다.
+  Gateway와 ingest 사이의 Kafka는 이 내부 처리 단계 앞에 놓인 별도 수집 경계다.
   여기의 네 단계는 **데이터흐름 노드**를 센 것이다. ADR 0005가 "다섯 계층"이라 부르는 것은 앞뒤로
   인증과 적재를 더한 **애플리케이션 내부 계층**이고, backend 모듈 수는 또 다르다 — 축이 셋이므로
   숫자를 맞대어 읽지 않는다. 노드와 모듈의 대응은 backend `docs/module-map.md`가 담는다.
@@ -158,9 +171,11 @@ AI tool → Desktop Application → API Gateway → Collector → Masker → Ada
 - 프롬프트는 정책에 따라 이 경로를 탄다. Privacy가 꺼져 있으면 데몬이 전송 전에 제거하므로 서버에 도달하지 않는다.
 - Masker가 어느 조직의 규칙을 적용할지는 함께 넘어온 인가 정보로 정한다.
 
-위 네 이름은 **논리 노드**다. 실제 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)와 그 계약은
-[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 있다. 노드 `Collector`와 그 컨테이너는
-다른 것이다([`../glossary.md`](../glossary.md)).
+위 네 이름은 **논리 노드**다. dev의 두 수신 경로는 같은 ingest 처리 코어를 호출하며,
+JWT 검증·RDB 재검증·전환 모드 계약은 [`../contracts/telemetry-kafka.md`](../contracts/telemetry-kafka.md)에 있다.
+기존 HTTP 계약과 이전 구현 경로(auth-proxy → OTel Collector 컨테이너 → processor)는
+[`../contracts/telemetry-ingest.md`](../contracts/telemetry-ingest.md)에 남긴다.
+노드 `Collector`와 OTel Collector 컨테이너는 다른 것이다([`../glossary.md`](../glossary.md)).
 
 ### B — 대시보드 조회 (읽기)
 

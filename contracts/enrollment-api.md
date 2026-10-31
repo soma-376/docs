@@ -76,16 +76,31 @@ HTTP 오류에서 셸 파이프 전체의 종료 코드 보장은 이 계약에 
 | `pulsemetry_linux_amd64` | `pulsemetry_cli_linux_amd64` |
 | `pulsemetry_linux_arm64` | `pulsemetry_cli_linux_arm64` |
 
-공급 태그는 **`v0.1.0-rc.2`**로 고정한다. prerelease를 명시적으로 선택하며 `latest`나 로컬
-재빌드로 대체하지 않는다. 원격 CLI 6종과 `SHA256SUMS`를 받아 필수 파일 존재·목록 포함·실제
-SHA-256 일치를 모두 검증한다. 목록의 GUI 항목은 CLI 공급 대상이 아니다. 조회 실패·파일
+공급 태그는 **`v0.1.0-rc.3`**로 고정한다. prerelease를 명시적으로 선택하며 `latest`나 로컬
+재빌드로 대체하지 않는다. 원격 CLI 6종·GUI 6종과 `SHA256SUMS`를 받아 필수 파일 존재·목록 포함·실제
+SHA-256 일치를 모두 검증한다. GUI도 같은 고정 해시 검증을 거쳐 공급한다. 조회 실패·파일
 누락·해시 불일치는 이미지 빌드를 실패시킨다.
 
-검증한 게시 파일은 enrollment 이미지의 `/app/binaries/v0.1.0-rc.2/`에 실행 사용자가 읽을 수
+검증한 게시 파일은 enrollment 이미지의 `/app/binaries/v0.1.0-rc.3/`에 실행 사용자가 읽을 수
 있도록 포함하고 `PULSEMETRY_BINARIES_DIR=/app/binaries`로 연결한다. 기존 `BinaryController`와
 `DaemonRelease`의 versioned 매핑·해시 검증·업데이트 인식 동작을 사용한다. 릴리스 변경 시 태그,
-필수 자산 해시, 배포 이미지 digest를 기록한다. 실제 dev 공개 6종의 해시가 게시 자산과 같아야
+필수 자산 해시, 배포 이미지 digest를 기록한다. 실제 dev 공개 12종의 해시가 게시 자산과 같아야
 하며 이전 이미지 digest와 설정을 지정해 복구한다. 이미지 게시와 실제 EKS 배포·검증은 별도다.
+
+GUI는 `pulsemetry_gui_windows_{amd64|arm64}.exe`, `pulsemetry_gui_darwin_{amd64|arm64}.dmg`,
+`pulsemetry_gui_linux_{amd64|arm64}.AppImage`다. 다운로드 표시 이름은 각각 `Pulsemetry.exe`,
+`Pulsemetry.dmg`, `Pulsemetry.AppImage`다. 릴리스 자산은 같은 이름과 `SHA256SUMS`로 검증한다.
+릴리스 디렉터리가 없는 개발 환경은 허용 이름 그대로의 평면 파일을 제공한다.
+
+부트스트랩은 등록 성공 후 `pulsemetry gui install`을 실행한다. GUI 설치·실행 실패는
+등록 성공을 취소하지 않는다. 최초 실행은 데몬 준비 확인 뒤에만 한다([ADR 0027](../adr/0027-install-desktop-and-report-policy-status.md)).
+
+### 설치 보고와 GUI 정책 상태
+
+기존 heartbeat 응답의 `expected_config_revision`을 적용 판과 비교한다. GUI는 데몬의 로컬 API에서
+적용 판·최신 확인 판·확인 시각·확인 실패를 읽는다. 이 조회는 정책 자동 적용을 하지 않는다.
+응답의 판이 null이거나 조회 실패·결과 만료인 경우 최신 정책 적용 완료로 표시하지 않는다.
+
 
 ## 2. `POST /api/v1/enroll`
 
@@ -226,7 +241,7 @@ PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrol
 | M7 | **계약 진화 취약** — 클라이언트 `DisallowUnknownFields` + 서버 `FAIL_ON_UNKNOWN_PROPERTIES`. 응답 필드 하나만 추가해도 배포된 전 클라이언트가 파괴된다 | 버저닝 또는 tolerant reader 정책이 필요하다. **현재는 필드 추가가 breaking change다** |
 | M8 | enrollment HTTP 클라이언트에 **타임아웃이 없고** 3xx 리다이렉트를 따라가며 초대 코드를 재전송한다 | 무한 대기, 코드 유출 |
 | M9 | manifest `protocol: "grpc"`는 서버 검증을 통과하지만 클라이언트가 상위 전송을 지원하지 않아 로컬 파이프라인 배선에서 제외된다(회사 직결 강등 — [`telemetry-ingest.md`](telemetry-ingest.md) §6). 강등 상태에서는 포워더 `Scrub`이 경로 밖이라 **manifest `privacy` 집행에 공백이 생긴다**(같은 문서 §5 M13). 현재 grpc 테넌트는 없다 | 서버에서 grpc를 막거나 클라이언트에 구현해야 한다 |
-| M10 | heartbeat·config 재조회·토큰 회전 부재. `installations.last_seen_at`·`telemetry_tokens.last_used_at`은 죽은 컬럼이고, `config_revision`은 저장만 하고 비교하지 않는다 | **manifest 변경이 기존 설치에 전파될 경로가 없다** ([`../product/prd.md`](../product/prd.md) §8-1) |
+| M10 | heartbeat는 시작 직후·매분 보고하며 GUI가 서버 최신 판과 실제 적용 판을 비교한다. manifest 재조회·정책 자동 적용·토큰 자동 회전은 미구현이다 | 정책 업데이트 대기는 표시하며 적용은 재설치가 필요하다 |
 | — | **해소됨(PROJ-269·268)** — WAF 등록 그룹 확대와 사전 조회를 dev에 배포하고 실제 차단·복구, 조회 비소비, 상태 변경 후 거부와 동시 단일 성공을 검증했다 | [ADR 0025 수용 결과](../adr/0025-invitation-installation-delivery.md#수용-결과와-범위) 참조. 기존 제한 M7~M10은 별도다 |
 | — | `POST /api/v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
