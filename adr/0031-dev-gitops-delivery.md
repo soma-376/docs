@@ -1,9 +1,9 @@
-# 0030. dev Kubernetes는 검증한 이미지 묶음과 고정 values를 GitOps로 배포한다
+# 0031. dev Kubernetes는 검증한 이미지 묶음과 고정 values를 GitOps로 배포한다
 
 ## Status
 
 Accepted — PROJ-273의 사용자 승인 설계다. PROJ-280·281·286은 문서 작업이며 컨트롤러·workflow·chart 구현이나 실제 GitOps 인수를 완료했다는 뜻이 아니다.
-[generated 사본 ADR 0026](0026-generated-values-private-sync-copy.md)의 private 사본·infra 원본 소유·역동기화 금지를 계승한다. generated만 보관·모든 직접 수정 금지·사본 공급과 수동 배포에 한정한 범위는 네 image.ref 예외·완료 manifest·V/P 선택으로 부분 대체·확장한다.
+[generated 사본 ADR 0030](0030-generated-values-private-sync-copy.md)의 private 사본·infra 원본 소유·역동기화 금지를 계승한다. generated만 보관·모든 직접 수정 금지·사본 공급과 수동 배포에 한정한 범위는 네 image.ref 예외·완료 manifest·V/P 선택으로 부분 대체·확장한다.
 [Kafka ADR 0026](0026-dev-telemetry-kafka-strimzi.md)의 Kafka 인증서 metadata revision을 수동 Helm 배포로 반영하는 실행 주체만 GitOps 인수 후 이 결정으로 대체한다. Strimzi의 인증서 소유권·mTLS·명시적 앱 재배포·수집 성공 의미는 유지한다.
 
 ## Context

@@ -4,7 +4,7 @@
 |---|---|
 | 당사자 | `pulsemetry-backend` → `infra` → private `infra-generated-values`; 계약은 `docs` 소유 |
 | 사본 저장소 | `soma-376/infra-generated-values`, private, desired 기본 브랜치 `main` |
-| 관련 결정 | [generated 사본 ADR 0026](../adr/0026-generated-values-private-sync-copy.md)을 계승·부분 대체하는 [ADR 0030 — 검증한 묶음의 GitOps 배포](../adr/0030-dev-gitops-delivery.md) |
+| 관련 결정 | [generated 사본 ADR 0030](../adr/0030-generated-values-private-sync-copy.md)을 계승·부분 대체하는 [ADR 0031 — 검증한 묶음의 GitOps 배포](../adr/0031-dev-gitops-delivery.md) |
 | 상태 | 변경 중 — 설계 Accepted, 관련 문서·구현·실제 GitOps 인수는 별도 검증 |
 
 ## 1. 소유권과 적용 범위
@@ -146,7 +146,7 @@ prune off는 자원 삭제 승인이나 보존 보장의 대체가 아니다. Na
 
 PROJ-280·281·286은 승인 설계를 문서화한다. 완료 manifest, image.ref chart 입력, candidate write-back, 승격기, snapshot/desired 선택, 권한·branch 보호, Application/CMP/custom health와 실제 인수는 후속 구현·검증 대상이다. 기존 Strimzi 배포 검증 완료와 GitOps 자동화 완료를 혼동하지 않는다.
 
-이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을 병합한 이력을 기반으로 한다. 기존 [generated 사본 ADR 0026](../adr/0026-generated-values-private-sync-copy.md)의 private 사본·infra 원본 소유·역동기화 금지 원칙을 계승하고, Updater image 필드 예외·완료 manifest·V/P 선택을 같은 계약에 반영한다. generated 사본 ADR 0026과 Kafka ADR 0026은 기존 파일명·링크를 보존하며 번호만으로 서로를 지칭하지 않는다. 로컬 계승은 원격 PR 병합이나 GitOps 인수 완료를 뜻하지 않는다.
+이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을 병합한 이력을 기반으로 한다. 기존 [generated 사본 ADR 0030](../adr/0030-generated-values-private-sync-copy.md)의 private 사본·infra 원본 소유·역동기화 금지 원칙을 계승하고, Updater image 필드 예외·완료 manifest·V/P 선택을 같은 계약에 반영한다. 로컬 계승은 원격 PR 병합이나 GitOps 인수 완료를 뜻하지 않는다.
 
 기존 수동 사본 공급·사용 절차는 Argo 인수 전의 Strimzi 13개 generated 파일과 대응 C에만 적용한다. 대상 저장소에 `dev/bundle.json`·`dev/desired.yaml`·`dev/applications/`가 있으면 해당 수동 절차를 중단하며 인수 후에는 이 계약의 publisher 경로만 사용한다. H 수동 인수의 기록과 V/P 자동화 상태를 일반 사본 복사로 덮어쓰지 않는다.
 

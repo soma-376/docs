@@ -6,7 +6,7 @@ Accepted — PROJ-282의 사용자 승인 결정. 실제 배포·전환·장애 
 ADR 0001의 dev OTLP 불투명 토큰 전용 결정, ADR 0005의 단일 배포 단위·네트워크 큐 금지,
 ADR 0006의 dev 동기 적재 성공 응답·서버 배치 큐 금지 부분을 대체한다. 기존 HTTP 복구 경로와
 마스킹·신원·재시도 계약의 나머지 부분은 유지한다.
-부분 대체: [ADR 0030](0030-dev-gitops-delivery.md)은 GitOps 인수 후 인증서 metadata revision을
+부분 대체: [ADR 0031](0031-dev-gitops-delivery.md)은 GitOps 인수 후 인증서 metadata revision을
 반영하는 배포 실행 책임만 바꾼다. Strimzi 인증서 소유권·mTLS·명시적 앱 재배포 원칙은 유지한다.
 
 ## Context

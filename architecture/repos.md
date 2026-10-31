@@ -32,7 +32,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
 | [`infra`](#infra) | AWS CDK v2 (TS) / Helm / Terraform | AWS·Kubernetes·생성기·배포와 복구 | `develop` | 레포 인덱스 |
-| [`infra-generated-values`](#infra-generated-values) | YAML / JSON / Markdown | private generated 사본·완료 manifest·desired 선택 | `main` | 허브 ADR 0030 |
+| [`infra-generated-values`](#infra-generated-values) | YAML / JSON / Markdown | private generated 사본·완료 manifest·desired 선택 | `main` | 허브 ADR 0031 |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -90,7 +90,7 @@ libs/enrollment-persistence/ 원천 JPA·Flyway
 ### 현재 상태
 
 네 앱과 Strimzi 실행 경로는 기존 코드·[Kafka 전환 검증](../contracts/telemetry-kafka.md#현재-상태와-검증)을 따른다.
-[ADR 0030](../adr/0030-dev-gitops-delivery.md)의 완료 manifest와 자동 승격은 승인 설계이며 후속 구현·인수 대상이다.
+[ADR 0031](../adr/0031-dev-gitops-delivery.md)의 완료 manifest와 자동 승격은 승인 설계이며 후속 구현·인수 대상이다.
 미병합 [PR #11](https://github.com/soma-376/docs/pull/11)의 dashboard·JWT 상세 계약 전체를 이 작업으로 채택하지 않는다.
 
 > **루트의 `PLAN.md` · `PR.md` · `RALPH-PLAN.md` · `DOMAIN-BOUNDARY-NOTES.md` · `PLAN-ADR-0008.md` ·
@@ -198,10 +198,10 @@ Argo/Updater 설치·candidate 승격·Application/CMP·실제 인수 완료를 
 
 ### 현재 상태
 
-[ADR 0030](../adr/0030-dev-gitops-delivery.md)은 승인 설계이며 실제 후보 공급·승격·GitOps 인수는 후속 검증 대상이다.
+[ADR 0031](../adr/0031-dev-gitops-delivery.md)은 승인 설계이며 실제 후보 공급·승격·GitOps 인수는 후속 검증 대상이다.
 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치를 기반으로 기존 사본
-소유권을 계승한다. [generated 사본 ADR 0026](../adr/0026-generated-values-private-sync-copy.md)의
-직접 수정 금지·공급 파일·수동 배포 범위는 ADR 0030의 image 예외·V/P 승격으로 부분 대체·확장한다.
+소유권을 계승한다. [generated 사본 ADR 0030](../adr/0030-generated-values-private-sync-copy.md)의
+직접 수정 금지·공급 파일·수동 배포 범위는 ADR 0031의 image 예외·V/P 승격으로 부분 대체·확장한다.
 인수 전의 수동 사본 절차와 인수 후 publisher 경로를 구분한다.
 
 ## rdb-schema

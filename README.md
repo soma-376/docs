@@ -48,7 +48,7 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 
 ## dev GitOps 계약의 현재 상태
 
-[ADR 0030](adr/0030-dev-gitops-delivery.md)은 네 앱 완료 manifest와 검증된 C/V/B 선택을 통한
+[ADR 0031](adr/0031-dev-gitops-delivery.md)은 네 앱 완료 manifest와 검증된 C/V/B 선택을 통한
 GitOps 설계다. [공급 계약](contracts/generated-values-sync.md)은 generated 사본·Updater의 image 필드
 예외·candidate·snapshot·desired의 단일 계약이다. PROJ-280·281·286 문서는 실제 자동화·인수 완료를 뜻하지 않는다.
 이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을
