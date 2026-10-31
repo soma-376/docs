@@ -40,15 +40,16 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0023 | [dev 과거 시드는 독립 파일과 제한 속도로 적재하고 검증 후 SSO와 알림을 활성화한다](0023-dev-historical-dashboard-dataset.md) | Accepted |
 | 0024 | [dev 시드의 지연 감시는 왕복 시간과 HTTP 응답 요약 시간을 구분한다](0024-dev-seed-http-summary-latency.md) | Accepted |
 | 0025 | [초대 설치 링크와 사전 검증은 최종 enroll 소비와 분리한다](0025-invitation-installation-delivery.md) | Accepted |
-| 0026 | [dev 텔레메트리 비동기 수집은 Strimzi Kafka와 mTLS를 사용한다](0026-dev-telemetry-kafka-strimzi.md) | Accepted (offset 운영 분리·같은 stage 원문 읽기 범위 명시; 배포 검증 별도) |
+| 0026 | [dev 텔레메트리 비동기 수집은 Strimzi Kafka와 mTLS를 사용한다](0026-dev-telemetry-kafka-strimzi.md) | Accepted — GitOps 인수 후 인증서 재배포 실행 책임은 [ADR 0031](0031-dev-gitops-delivery.md)으로 부분 대체; mTLS·수집 계약 유지 |
 | 0027 | [설치 과정에서 데스크톱 앱을 함께 설치하고 정책 적용 상태를 표시한다](0027-install-desktop-and-report-policy-status.md) | Accepted |
 | 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
-| 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed |
+| 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed — 사본 원칙 계승, 직접 수정·공급·배포 범위는 [ADR 0031](0031-dev-gitops-delivery.md)으로 부분 대체·확장 |
+| 0031 | [dev Kubernetes는 검증한 이미지 묶음과 고정 values를 GitOps로 배포한다](0031-dev-gitops-delivery.md) | Accepted — 설계 승인, 구현·GitOps 인수 미완료; generated 사본·Kafka 실행 책임 부분 대체 |
 
-새 ADR은 `0031`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+새 ADR은 `0032`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
-ADR 0030은 private generated values 사본 공급에 대한 제안이다. Argo CD 연결·자동 배포를 채택한 것으로 해석하지 않는다.
+PROJ-281은 ADR 0030의 PROJ-276 사본 제안을 계승하며 GitOps 확장 범위는 ADR 0031을 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
@@ -81,8 +82,8 @@ ADR 0006의 `Retry-After`는 서버의 최소 대기 제안이며, 최종 대기
 
 | 레포 | ADR 위치 | 인덱스 | 건수 | 번호 규칙 · 파일명 관례 |
 |---|---|---|---|---|
-| `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 23 (0001–0019, 0021–0024) | **영어 슬러그.** `0020`은 로그 그룹 정책용 **예약**. 새 ADR은 `0025`부터 |
-| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 64 (0001–0064), PR #37 기준 | **한국어 슬러그.** 다음 번호는 대상 브랜치 인덱스에서 확인 |
+| `infra` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **영어 슬러그.** 현재 번호·동번호 문서의 범위는 해당 레포 인덱스가 기준 |
+| `pulsemetry-backend` | `docs/adr/` | ✅ `docs/adr/README.md` | 레포 인덱스 참조 | **한국어 슬러그.** 다음 번호는 대상 브랜치 인덱스에서 확인 |
 | `telemetryctl` | `docs/adr/` | ✅ `docs/adr/README.md` | 18 (0001–0018), [PR #37의 `a55e944` 기준](https://github.com/soma-376/telemetryctl/blob/a55e944/docs/adr/README.md) | **한국어 슬러그.** 해당 ref의 다음 번호는 `0019`; 작성 시 대상 브랜치 인덱스에서 다시 확인 |
 | `ai-telemetry-pipeline` | `docs/adr/` | ❌ 없음 | 6 (0001–0006) + 템플릿 | **한국어 슬러그**(레포 `AGENTS.md`·템플릿 선언). 새 ADR은 `0007`부터 |
 | `team-376-llm-wiki` | `wiki/decisions/` | `index.md` | 다수 | **ADR이 아니다** — 회의에서 나온 결정의 기록. 코드 구조를 구속하지 않는다 |

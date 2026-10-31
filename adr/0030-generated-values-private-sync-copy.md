@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed
+Proposed — PROJ-276의 선행 사본 공급 제안. [ADR 0031](0031-dev-gitops-delivery.md)이 private 사본·infra 원본 소유·역동기화 금지를 계승하며, generated만 보관·모든 직접 수정 금지·수동 배포에 한정한 범위는 네 image.ref 예외·완료 manifest·V/P 선택으로 부분 대체·확장한다.
+
+아래 Decision은 최초 사본 제안의 범위이고 현행 적용 규칙은 [단일 공급 계약](../contracts/generated-values-sync.md)을 따른다. 실제 GitOps 인수 전에는 수동 절차의 적용 경계를 유지한다.
 
 ## Context
 
