@@ -28,9 +28,10 @@ Dashboard API를 설계할 때 아래는 협상 대상이 아니다.
 
 - **Dashboard API 서버가 어디에 사는가** — `pulsemetry-backend`에 모듈로 추가할지 별도 레포로 뗄지.
   이것은 크로스레포 결정이므로 [`../adr/`](../adr/README.md)에 ADR로 남긴다.
-- **웹 대시보드 로그인·세션** — backend Spring Security가 AT·RT를 직접 발급한다(backend ADR-0007 Accepted, 구현은 아직 없다).
-  Cognito는 쓰지 않는다([허브 ADR-0001](../adr/0001-otlp-authentication-model.md) — infra ADR-0008은 Superseded).
-  `members.cognito_user_sub`는 제거됐고 비밀번호 자리는 `members.password_hash`다([`data-model.md`](data-model.md) §3).
+- **웹 대시보드 로그인·세션** — frontend BFF가 브라우저의 웹 세션을 담당하고 backend가 서비스 AT·RT 발급과 API 인증·인가를 담당한다.
+  [ADR 0030](../adr/0030-shared-valkey-web-sessions.md)에 따라 브라우저에는 인증 암호화된 세션 ID·만료 시각만 HttpOnly 쿠키에 저장한다. AT·RT와 갱신 상태는 환경별 공유 Valkey에 암호화 저장한다.
+  여러 BFF의 동시 갱신은 Valkey에서 한 요청만 선점하고 다른 요청은 저장된 최신 토큰을 읽는다. backend의 토큰 회전·재사용 탐지는 유지한다.
+  Valkey 연결 장애는 503, 세션 만료·유실·갱신 결과 불명확은 재로그인이 필요한 401이다. 로그인 화면은 세션 확인 실패에도 접근할 수 있다. 기존 토큰 쿠키는 자동 이관하지 않는다.
   사원이 CLI에서 하는 로그인과 데몬의 OTLP 인증(installation에 귀속된 `ptt_`)은 이 문서의 범위가 아니다.
 - 인가 모델 — 계정은 `members` 하나지만 **웹 대시보드에 들어오는 사람은 관리자(`role`이 `owner`·`admin`)뿐이다.**
   일반 사원(`role='member'`)은 같은 계정으로 CLI·파이프라인 쪽만 쓴다. 이 구분은 role 기반 인가로 막는다.
