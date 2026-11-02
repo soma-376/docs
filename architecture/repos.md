@@ -165,7 +165,8 @@ config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
 
 - **소유**: 모든 AWS 리소스, **배포용 collector 설정**, 배포 역할.
 - 생성된 values의 입력·생성기·chart·배포 정책과 절차도 이 레포가 소유한다. private 사본 공급은
-  [generated values 계약](../contracts/generated-values-sync.md)을 따르며 소유권을 이전하지 않는다.
+  [generated values 계약](../contracts/generated-values-sync.md)의 인계 전 수동 공급 범위를 따른다.
+  인계 후 publisher의 실행 책임은 후속 GitOps 결정이 정하며 입력·생성기·chart 소유권은 유지한다.
 - **소유하지 않음**: 앱 코드. 앱 레포 CI는 이미지 빌드 → ECR push → `ecs update-service --force-new-deployment`까지만 한다.
   **태스크 정의를 바꾸려면 반드시 이 레포를 경유한다.**
 - 폴더 의존 방향은 `prod → common`, `dev → common`, `cicd → common` **단방향**. `prod ↔ dev` 상호 참조 금지.
@@ -181,8 +182,10 @@ values를 접근 제한 상태로 보관하는 private 레포다. 기본 브랜�
 - **소유**: `dev/generated/`의 허용 YAML 사본과 `dev/infra-commit.txt`의 대응 infra revision.
   README·AGENTS는 목적·수정 경로·담당 주체와 허브 계약을 안내한다.
 - **소유하지 않음**: 원본 입력, 생성기, chart, 배포 정책과 절차. 이 네 항목은 `infra`에 남는다.
-- infra 운영 담당자가 원본 수정 → 생성 → 검증 → 단방향 동기화를 수행한다. 사본 직접 수정과
-  역방향 동기화는 하지 않으며, 사용할 때 대응 infra revision을 확인한다.
+- Argo CD 인계 전에는 infra 운영 담당자가 원본 수정 → 생성 → 검증 → 단방향 수동 동기화를 수행한다.
+  Strimzi profile의 13개 YAML과 대응 infra revision을 함께 사용한다. 사본 직접 수정 금지는 이 수동
+  단계에 적용하며 역방향 동기화 금지는 계속 유지한다. 인계 후 writer·배포 선택은 후속 계약을 따른다.
+- 완료 manifest·desired·Application·delivery state가 존재하면 수동 사본 절차를 중단한다.
 - Argo CD의 읽기 대상이 될 수 있지만 파일 공급은 연결·sync·배포 완료를 뜻하지 않는다.
 - 계약: [`generated-values-sync.md`](../contracts/generated-values-sync.md).
   결정의 근거: [허브 ADR 0030](../adr/0030-generated-values-private-sync-copy.md).

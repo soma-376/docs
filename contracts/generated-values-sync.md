@@ -1,4 +1,4 @@
-# 계약 — 생성된 Helm values의 private 동기화 사본
+# 계약 — Argo CD 인계 전 generated values의 private 수동 사본
 
 | 항목 | 내용 |
 |---|---|
@@ -6,14 +6,14 @@
 | 사본 저장소 | [`soma-376/infra-generated-values`](https://github.com/soma-376/infra-generated-values), private, 기본 브랜치 `main` |
 | 생성기 | `infra/scripts/eks-values.mjs` |
 | 관련 ADR | [허브 ADR 0030 — 생성된 values만 private 레포에 동기화한다](../adr/0030-generated-values-private-sync-copy.md) |
-| 상태 | 변경 중 — ADR과 공급 계약 리뷰, 관련 레포 문서 반영 후 확정 |
+| 상태 | 변경 중 — Argo CD 인계 전 수동 사본 공급 범위, 관련 레포 리뷰·실제 검증 별도 |
 
-이 계약은 생성 결과의 공급 경계와 revision 연결을 정한다. 입력·생성기·chart·배포 정책과 절차는
+이 계약은 Argo CD 인계 전 생성 결과의 수동 공급 경계와 revision 연결을 정한다. 입력·생성기·chart·배포 정책과 절차는
 `infra`가 소유하며, private 레포의 값이 새 원본이 되지 않는다.
 
 ## 1. 소유권과 접근
 
-`infra` 운영 담당자가 원본 변경, 생성 결과 검증, 사본 동기화와 배포 판단을 맡는다.
+인계 전에는 `infra` 운영 담당자가 원본 변경, 생성 결과 검증, 수동 사본 동기화와 배포 판단을 맡는다.
 `infra-generated-values`는 생성된 values와 대응 infra revision만 보관한다. 상세 계약은 이 문서에
 두고, 사본 레포의 README와 AGENTS는 목적·허용 파일·수정 경로·담당 주체를 안내한다.
 
@@ -23,7 +23,7 @@
 
 ## 2. 공급 파일과 revision
 
-`dev/generated/`에는 다음 12개 YAML만 공급한다. 이 목록은 현재 `eks-values.mjs`의 출력 파일명과
+`dev/generated/`에는 현재 Strimzi profile의 다음 13개 YAML만 공급한다. 이 목록은 현재 `eks-values.mjs`의 출력 파일명과
 일치해야 하며, 생성기 출력 범위를 바꿀 때 이 계약과 사본 안내를 함께 갱신한다.
 
 ```text
@@ -39,10 +39,11 @@ clickhouse.yaml
 fluent-bit.yaml
 ascp.yaml
 observability.yaml
+kafka-strimzi.yaml
 ```
 
 `dev/infra-commit.txt`에는 생성에 사용한 infra의 전체 commit SHA 한 줄을 기록한다. 생성기·chart·
-추적된 입력이 그 commit과 일치하는 상태에서 생성한다. 같은 실행의 12개 파일과 SHA를 한 사본
+추적된 입력이 그 commit과 일치하는 상태에서 생성한다. 같은 실행의 13개 파일과 SHA를 한 사본
 커밋으로 게시하며, 파일 누락이나 서로 다른 실행의 혼합이 있으면 동기화하지 않는다.
 
 이 SHA는 생성기·chart·추적된 입력의 revision을 식별한다. AWS 조회 결과와 이미지 digest 등
@@ -54,9 +55,14 @@ Secret 원문·토큰·개인키, kubeconfig, AWS 조회 원본 JSON, 로그·�
 
 ## 3. 생성·동기화·사용 절차
 
+사전 확인에서 `dev/bundle.json`, `dev/desired.yaml`, `dev/applications/`,
+`dev/delivery-state.json` 중 하나라도 존재하면 이 수동 절차를 중단한다. 인계 후의 publisher가
+보관하는 manifest·배포 선택·공통 잠금을 사본 복사로 덮어쓰지 않는다. 후속 GitOps 계약이
+정한 게시·복구 경로만 사용하며 기존 선택을 수동 사본으로 되돌리지 않는다.
+
 1. `infra`에서 원본 입력·생성기·chart의 변경을 검토하고 commit을 확정한다.
 2. 그 revision의 생성기로 values를 만들고 기존 infra 절차에 따라 검증한다.
-3. 허용한 12개 YAML과 대응 SHA만 복사한다. 실행 디렉터리 전체를 복사하지 않는다.
+3. 허용한 13개 YAML과 대응 SHA만 복사한다. 실행 디렉터리 전체를 복사하지 않는다.
 4. 파일 목록·누락·내용 일치와 Secret 원문 부재를 검토한 뒤 한 묶음을 한 커밋으로 동기화한다.
 5. 사본을 사용할 때는 사본 자체의 commit도 고정하고 `dev/infra-commit.txt`의 SHA와 일치하는
    infra checkout의 chart·정적 values를 사용한다. SHA가 다르거나 필요한 파일이 없으면 중단한다.
@@ -67,7 +73,8 @@ Secret 원문·토큰·개인키, kubeconfig, AWS 조회 원본 JSON, 로그·�
 values와 SHA 파일은 `0600`으로 설정한다.
 
 사본을 고쳐 원본으로 되돌리는 역방향 동기화는 하지 않는다. 값 수정은 infra 원본 수정과 재생성을
-거친다. 이전 values를 사용할 때도 해당 사본 commit과 infra SHA를 함께 선택하고 기존 복구 절차를
+거친다. 이 직접 수정 금지는 인계 전 수동 단계의 규칙이며 후속 GitOps writer의 허용 범위는
+채택된 후속 계약이 정한다. 역방향 동기화 금지는 인계 후에도 유지한다. 이전 values를 사용할 때도 해당 사본 commit과 infra SHA를 함께 선택하고 기존 복구 절차를
 따른다. 서로 다른 사본 revision의 runtime·앱 YAML을 혼합하지 않는다.
 
 ## 4. 동기화와 배포의 경계
@@ -76,7 +83,7 @@ values와 SHA 파일은 `0600`으로 설정한다.
 적용, workload 정상 상태와 기능 검증을 완료했다는 뜻이 아니다. 배포 판단과 증거는 infra가 관리한다.
 
 이 계약으로 Argo CD Application, 자동 sync, 이미지 자동 갱신이나 one-off Job 자동 실행을
-도입하지 않는다. 기존 수동 설치 순서, JWT verifier → signer 순서, Kafka 관리 Job의 별도 실행
+도입하지 않는다. 이 범위는 인계 후 자동화 도입을 금지하는 결정이 아니다. 인계 전 수동 설치 순서, JWT verifier → signer 순서, Kafka 관리 Job의 별도 실행
 절차는 유지한다. `telemetry-kafka-admin.yaml`을 보관하는 행위가 Job 실행 요청이 되지 않는다.
 
 ## 5. 현재 상태와 미해결

@@ -44,7 +44,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0027 | [설치 과정에서 데스크톱 앱을 함께 설치하고 정책 적용 상태를 표시한다](0027-install-desktop-and-report-policy-status.md) | Accepted |
 | 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
-| 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed |
+| 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed — Argo CD 인계 전 수동 사본 공급; 인계 후 writer는 후속 결정 |
 
 새 ADR은 `0031`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 

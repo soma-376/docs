@@ -30,7 +30,7 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 | [`product/roadmap.md`](product/roadmap.md) | 마일스톤 골격 | 골격 |
 | [`architecture/overview.md`](architecture/overview.md) | 컴포넌트 지도·데이터 흐름·아키텍처 불변식 | 증류 완료 (원본 `archive/SA.md`) |
 | [`architecture/repos.md`](architecture/repos.md) | 레포별 역할·경계·현재 상태 | 조사 기반 신규 |
-| [`contracts/`](contracts/README.md) | 레포 간 계약 5건 | 개별 상태는 계약 인덱스 참조, generated values 공급 계약 변경 중 |
+| [`contracts/`](contracts/README.md) | 레포 간 계약 5건 | 개별 상태는 계약 인덱스 참조, Argo CD 인계 전 generated values 수동 공급 계약 변경 중 |
 | [`adr/README.md`](adr/README.md) | 크로스레포 ADR 인덱스 + 전 레포 카탈로그 | 크로스레포 ADR 14건, 채택·제안·대체 상태는 인덱스 참조 |
 | [`glossary.md`](glossary.md) | 도메인 용어 | 골격 |
 | [`onboarding.md`](onboarding.md) | 클론 배치·에이전트 셋업·첫 PR | 완성 |
@@ -45,6 +45,12 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 3. **기존 40여 건을 이관하는 이득은 검색 편의뿐이고, 대가는 링크 파손이다.** 검색은 이 허브의 카탈로그와 `adr` 스킬이 해결한다.
 
 크로스레포 결정만 반대로 중앙이 소유한다. 단일 레포에 두면 다른 레포에서 비가시적이고 소유가 모호해지기 때문이다.
+
+## generated values 공급 범위
+
+[공급 계약](contracts/generated-values-sync.md)과 [ADR 0030](adr/0030-generated-values-private-sync-copy.md)은
+Argo CD 인계 전의 Strimzi 13개 generated YAML과 대응 infra SHA 수동 공급을 정한다.
+인계 후에는 채택된 GitOps 계약의 writer·배포 선택·복구 경로를 사용하며 수동 복사로 상태를 덮어쓰지 않는다.
 
 ## 규칙
 
