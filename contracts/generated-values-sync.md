@@ -148,6 +148,6 @@ PROJ-280·281·286은 승인 설계를 문서화한다. 완료 manifest, image.r
 
 이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을 병합한 이력을 기반으로 한다. 기존 [generated 사본 ADR 0030](../adr/0030-generated-values-private-sync-copy.md)의 private 사본·infra 원본 소유·역동기화 금지 원칙을 계승하고, Updater image 필드 예외·완료 manifest·V/P 선택을 같은 계약에 반영한다. 로컬 계승은 원격 PR 병합이나 GitOps 인수 완료를 뜻하지 않는다.
 
-기존 수동 사본 공급·사용 절차는 Argo 인수 전의 Strimzi 13개 generated 파일과 대응 C에만 적용한다. 대상 저장소에 `dev/bundle.json`·`dev/desired.yaml`·`dev/applications/`가 있으면 해당 수동 절차를 중단하며 인수 후에는 이 계약의 publisher 경로만 사용한다. H 수동 인수의 기록과 V/P 자동화 상태를 일반 사본 복사로 덮어쓰지 않는다.
+기존 수동 사본 공급·사용 절차는 Argo 인수 전의 Strimzi 13개 generated 파일과 대응 C에만 적용한다. 대상 저장소에 `dev/bundle.json`·`dev/desired.yaml`·`dev/applications/`·`dev/delivery-state.json` 중 하나라도 있으면 해당 수동 절차를 중단하며 인수 후에는 이 계약의 publisher 경로만 사용한다. H 수동 인수의 기록과 V/P 자동화 상태를 일반 사본 복사로 덮어쓰지 않는다.
 
 구현·운영은 [infra ADR 0054](https://github.com/soma-376/infra/blob/develop/docs/adr/0054-dev-argocd-gitops-operations.md), 이미지 게시 의무는 [backend ADR 0075](https://github.com/soma-376/pulsemetry-backend/blob/develop/docs/adr/0075-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)를 따른다. 상대 레포 문서·구현이 모두 반영될 때까지 이 계약은 변경 중으로 둔다.

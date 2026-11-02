@@ -181,7 +181,8 @@ config/otel-collector.yaml   prod 배포용 collector 설정
 
 Strimzi의 배포·관측 검증과 GitOps 자동화는 별도다. PROJ-280·281·286은 설계 문서이며
 Argo/Updater 설치·candidate 승격·Application/CMP·실제 인수 완료를 뜻하지 않는다.
-인수 전에는 기존 infra 수동 Helm 런북을 유지한다.
+인수 전에는 기존 infra 수동 Helm 런북과 Strimzi 13개 YAML 사본 공급을 유지한다.
+완료 manifest·desired·Application·delivery state가 있는 저장소에는 수동 사본 복사를 실행하지 않는다.
 
 ## infra-generated-values
 

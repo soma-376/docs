@@ -52,7 +52,7 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 GitOps 설계다. [공급 계약](contracts/generated-values-sync.md)은 generated 사본·Updater의 image 필드
 예외·candidate·snapshot·desired의 단일 계약이다. PROJ-280·281·286 문서는 실제 자동화·인수 완료를 뜻하지 않는다.
 이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을
-병합한 이력을 기반으로 한다. 기존 사본 계약을 계승하고 GitOps 예외·승격 규칙을 같은 계약에 반영한다.
+병합한 이력을 기반으로 한다. 기존 사본 계약은 Argo 인계 전의 Strimzi 13개 YAML 수동 공급에 한정하고, 인계 후 GitOps 예외·승격 규칙을 같은 계약에 반영한다.
 [PR #11](https://github.com/soma-376/docs/pull/11)의 EKS 배포 제안은 미병합 참고이며 선행 조건이 아니다.
 로컬 브랜치 계승은 PR의 원격 갱신·병합·종료 또는 실제 배포를 뜻하지 않는다.
 
