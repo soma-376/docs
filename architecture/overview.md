@@ -123,11 +123,12 @@ flowchart LR
 
 ### dev 배포 제어 경계
 
-[ADR 0031](../adr/0031-dev-gitops-delivery.md)은 backend 이미지 공급 → infra 후보 검증 →
-private snapshot/desired 선택 → Argo 적용을 분리한다. backend의 동일 SHA·run/attempt 네 앱 완료
-manifest와 infra C, private V를 함께 선택하며 구체 파일·실패·복구 계약은
-[generated values 계약](../contracts/generated-values-sync.md)이 소유한다. 이 배포 제어는 위 제품 데이터
-흐름·마스킹·귀속·성공 응답의 의미를 바꾸지 않는다.
+[ADR 0031](../adr/0031-dev-gitops-delivery.md)은 Image Updater 없이 backend image/rollback과 infra config
+publisher가 공통 Git 잠금으로 private snapshot/desired를 선택하고 Argo가 적용하는 책임을 정한다.
+backend는 같은 SHA/run/attempt의 네 ARM64 image B와 현재 C·비이미지 값을 보존하는 image 변경을,
+infra는 현재 B를 유지하는 설정 재생성을 맡는다. C/V/B/P와 공통 state·확정 실패의 한 번 rollback·
+failure fence 이후 정상 후보 재개는 [공급 계약](../contracts/generated-values-sync.md)이 소유한다.
+배포 제어는 제품 데이터 흐름·마스킹·귀속·성공 응답의 의미를 바꾸지 않는다.
 
 ### 가공은 두 단계, 비용은 이원화
 

@@ -17,7 +17,7 @@ E2E 검증에서 확인된 차단 결함 4건 중 3건이 "구간 내부의 버�
 
 | 계약 | 당사자 | 상태 |
 |---|---|---|
-| [`generated-values-sync.md`](generated-values-sync.md) | `pulsemetry-backend` → `infra` → private `infra-generated-values` | 변경 중 — 인계 전 수동 사본·인계 후 GitOps 설계 Accepted, 구현·실제 인수 별도 |
+| [`generated-values-sync.md`](generated-values-sync.md) | `pulsemetry-backend` image/rollback·`infra` config → private `infra-generated-values` | 변경 중 — Updater 철회·공통 Git 잠금 설계 Accepted, 구현·실제 인수 별도 |
 | [`telemetry-kafka.md`](telemetry-kafka.md) | `pulsemetry-backend` ↔ `infra` | dev Strimzi/mTLS 전환 검증 완료 — PROJ-285 범위, 관측 인수 별도 |
 | [`enrollment-api.md`](enrollment-api.md) | `telemetryctl` ↔ `pulsemetry-backend` | 확정 |
 | [`telemetry-ingest.md`](telemetry-ingest.md) | `telemetryctl` → 현재 `ai-telemetry-pipeline`, 목표 `pulsemetry-backend` (배포: `infra`) | 현재 배포 경로 B3 미해결; 목표 경로 상태·재시도는 §8 |

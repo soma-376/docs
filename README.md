@@ -48,13 +48,12 @@ Pulsemetry 멀티레포의 **제품·아키텍처·레포 간 계약**에 대한
 
 ## dev GitOps 계약의 현재 상태
 
-[ADR 0031](adr/0031-dev-gitops-delivery.md)은 네 앱 완료 manifest와 검증된 C/V/B 선택을 통한
-GitOps 설계다. [공급 계약](contracts/generated-values-sync.md)은 generated 사본·Updater의 image 필드
-예외·candidate·snapshot·desired의 단일 계약이다. PROJ-280·281·286 문서는 실제 자동화·인수 완료를 뜻하지 않는다.
-이번 변경은 [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을
-병합한 이력을 기반으로 한다. 기존 사본 계약은 Argo 인계 전의 Strimzi 13개 YAML 수동 공급에 한정하고, 인계 후 GitOps 예외·승격 규칙을 같은 계약에 반영한다.
-[PR #11](https://github.com/soma-376/docs/pull/11)의 EKS 배포 제안은 미병합 참고이며 선행 조건이 아니다.
-로컬 브랜치 계승은 PR의 원격 갱신·병합·종료 또는 실제 배포를 뜻하지 않는다.
+[ADR 0031](adr/0031-dev-gitops-delivery.md)은 Image Updater 도입을 철회하고 backend image/rollback과
+infra config publisher가 공통 Git CAS 잠금으로 검증된 C/V/B/P를 선택하는 설계다. 실제 적용은 Argo CD가
+맡는다. [공급 계약](contracts/generated-values-sync.md)은 현행 repository+digest·비이미지 보존·공통 상태·
+한 번의 호환 image rollback·실패 fence 이후 새 정상 후보의 재개를 정의한다.
+PROJ-276의 수동 사본 계약은 인계 전 Strimzi 13개 YAML에 한정하며 인계 후 상태를 수동 복사로 덮지 않는다.
+PROJ-280·281·286은 설계 문서이고 workflow·잠금·자동 복구·Argo 설치·실제 인수 완료를 뜻하지 않는다.
 
 ## 규칙
 

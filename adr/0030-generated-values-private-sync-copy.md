@@ -3,7 +3,7 @@
 ## Status
 
 Proposed — PROJ-276의 Argo CD 인계 전 수동 사본 공급 제안. [ADR 0031](0031-dev-gitops-delivery.md)이
-private 보관·infra 원본 소유·역동기화 금지를 계승하며, 인계 후의 image 필드 예외·완료 manifest·V/P 선택을 부분 대체·확장한다.
+private 보관·infra 원본 소유·역동기화 금지를 계승하며, 인계 후 backend의 image/rollback 게시·infra 설정 게시·완료 manifest·V/P 선택·공통 delivery state를 부분 대체·확장한다.
 
 이 ADR의 직접 수정 금지·infra 운영자 공급·수동 배포 절차는 인계 전 단계에만 적용한다.
 인계 후의 이미지 게시·배포 선택·복구는 채택된 후속 GitOps 결정과 단일 공급 계약을 따른다.

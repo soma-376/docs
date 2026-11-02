@@ -45,7 +45,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
 | 0030 | [생성된 Helm values만 private 레포에 동기화한다](0030-generated-values-private-sync-copy.md) | Proposed — 인계 전 수동 사본 범위; 인계 후 직접 수정·공급·배포 범위는 [ADR 0031](0031-dev-gitops-delivery.md)으로 부분 대체·확장 |
-| 0031 | [dev Kubernetes는 검증한 이미지 묶음과 고정 values를 GitOps로 배포한다](0031-dev-gitops-delivery.md) | Accepted — 설계 승인, 구현·GitOps 인수 미완료; generated 사본·Kafka 실행 책임 부분 대체 |
+| 0031 | [dev Kubernetes는 workflow가 선택한 이미지 묶음과 고정 values를 GitOps로 배포한다](0031-dev-gitops-delivery.md) | Accepted — Image Updater 철회; backend image/rollback·infra config·공통 Git 잠금, 구현·인수 별도 |
 
 새 ADR은 `0032`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 

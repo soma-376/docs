@@ -125,7 +125,7 @@ ALB를 복구 경로로 전환한다. Strimzi PVC와 offset 및 MSK 철거 이�
 
 GitOps 설계는 [ADR 0031](../adr/0031-dev-gitops-delivery.md)으로 승인됐지만 실제 인수는 별도다.
 인수 전에는 기존 Helm 수동 배포·인증서 metadata 반영 절차를 유지한다. 아래 Strimzi 전환 검증은
-Argo CD·Image Updater·candidate 승격의 완료 증거가 아니다.
+Argo CD·workflow publisher·공통 잠금·자동 rollback의 완료 증거가 아니다.
 
 **dev Strimzi/mTLS 배포·전환 검증은 [PROJ-285](https://team376.atlassian.net/browse/PROJ-285)의 범위에서 완료됐다.**
 validation/main 실제 JWT 요청의 Gateway ACK→Kafka record→consumer commit→ClickHouse와

@@ -1,86 +1,138 @@
-# 0031. dev Kubernetes는 검증한 이미지 묶음과 고정 values를 GitOps로 배포한다
+# 0031. dev Kubernetes는 workflow가 선택한 이미지 묶음과 고정 values를 GitOps로 배포한다
 
 ## Status
 
-Accepted — PROJ-273의 사용자 승인 설계다. PROJ-280·281·286은 문서 작업이며 컨트롤러·workflow·chart 구현이나 실제 GitOps 인수를 완료했다는 뜻이 아니다.
-[generated 사본 ADR 0030](0030-generated-values-private-sync-copy.md)의 private 사본·infra 원본 소유·역동기화 금지를 계승한다. generated만 보관·모든 직접 수정 금지·사본 공급과 수동 배포에 한정한 범위는 네 image.ref 예외·완료 manifest·V/P 선택으로 부분 대체·확장한다.
-[Kafka ADR 0026](0026-dev-telemetry-kafka-strimzi.md)의 Kafka 인증서 metadata revision을 수동 Helm 배포로 반영하는 실행 주체만 GitOps 인수 후 이 결정으로 대체한다. Strimzi의 인증서 소유권·mTLS·명시적 앱 재배포·수집 성공 의미는 유지한다.
+Accepted — PROJ-281 개정으로 **Image Updater 도입을 철회**하고 backend workflow의 image 게시·rollback과
+infra 설정 publisher를 공통 Git 잠금으로 조정한다. PROJ-280·281·286은 설계 문서이며 workflow·controller·
+chart 구현이나 실제 GitOps 인수 완료를 뜻하지 않는다. Argo CD 채택은 유지한다.
+
+[ADR 0030](0030-generated-values-private-sync-copy.md)의 private 보관·infra 입력/생성기/chart 소유권·
+역동기화 금지를 계승한다. 인계 전의 사본만 보관·직접 편집 금지·infra 운영자 수동 공급 범위는 인계 후
+backend의 제한된 image 변경과 완료 manifest·V/P·delivery state 게시로 부분 대체·확장한다.
+[Kafka ADR 0026](0026-dev-telemetry-kafka-strimzi.md)의 인증서 metadata revision을 반영하는 실행 책임만
+GitOps 인수 후 이 결정으로 바꾼다. Strimzi 소유권·mTLS·명시적 재배포·수집 성공 의미는 유지한다.
 
 ## Context
 
-backend의 네 앱 이미지, infra의 chart·runtime 입력·생성기, private 저장소의 실제 values는 서로 다른 revision으로 움직인다. 이미지 tag 네 개를 순차 갱신하면 그 중간에 서로 다른 실행의 이미지를 읽을 수 있다. generated를 재생성하는 CD와 이미지를 갱신하는 컨트롤러가 같은 파일을 쓰면 검토한 이미지가 되돌아갈 수도 있다.
+backend는 네 앱의 정확한 build digest와 원본 실행을 이미 알고 있다. registry를 다시 관찰하는 Updater는
+네 이미지가 같은 SHA/run/attempt의 완성 묶음임을 보장하지 못하므로 별도 검증이 필요하다. 후보 branch·
+추적 tag·image.ref 전환을 더해도 이 검증은 줄지 않는다. 원본 workflow의 성공 결과를 별도 승격 workflow가
+직접 받아 Git에 기록하는 방식으로 공급 경로를 단순화한다.
 
-이 결정은 `pulsemetry-backend`, `infra`, `infra-generated-values`와 계약 소유자인 `docs`에 적용한다. dev의 검증된 Strimzi·ClickHouse·앱·관측 자원을 기존 Helm 배포에서 인계하되, 데이터와 자격 공급 책임을 유지해야 한다.
+`pulsemetry-backend`, `infra`, private `infra-generated-values`와 계약 소유자인 `docs`가 당사자다.
+이미지와 설정을 서로 다른 publisher가 바꾸므로 repository별 workflow concurrency만으로는 충돌을 막지
+못한다. 단순 Git revert는 migration·현재 runtime·키/TLS 호환성을 보장하지 않고 실패 전 생성된 실행이
+늦게 끝나면 rollback 직후 같은 장애를 재배포할 수 있다. 공통 잠금과 영속적인 실패·재개 경계가 필요하다.
 
 ## Decision
 
-### 1. 소유권과 범위
+### 1. 범위와 소유권
 
-- backend는 같은 backend commit과 같은 workflow run/attempt에서 성공한 enrollment-api·telemetry-ingest·telemetry-gateway·dashboard-api의 ARM64 image digest 네 개를 하나의 완료 manifest로 게시한다. Gateway가 빠지면 완료 묶음이 아니다.
-- infra는 AWS/CDK·Kubernetes chart·runtime·생성기·검증 및 승격 정책을 소유한다. backend CI에는 Kubernetes 적용이나 infra/private desired 변경 권한을 주지 않는다.
-- `infra-generated-values`는 private으로 유지한다. 비이미지 generated 값은 infra의 사본이며, Image Updater가 비배포 candidate의 네 앱 `image.ref`를 수정하는 경우만 직접 수정의 예외다. 사람이 generated를 고치거나 원본으로 역동기화하지 않는다.
-- Argo CD와 Image Updater 자체는 운영자가 고정된 Helm release로 설치·갱신한다. 자체 관리 Application으로 옮기지 않는다. 기존 Helm 소유권을 인계한 dev 앱·Kafka·ClickHouse·platform·관측 Application은 모두 automated sync와 self-heal을 사용하고 prune은 끈다.
-- prod, frontend ECS와 격리 perf는 범위 밖이다. perf 비교 중 이미지·노드·계측 고정은 [ADR 0029](0029-perf-strimzi-readiness-and-path-comparison.md)를 따른다.
+- backend는 같은 SHA/run/attempt에서 검증·게시한 네 ARM64 이미지의 완료 manifest를 만든다. 원본 게시
+  workflow가 최종 성공으로 **종료된 후 별도 승격 workflow**가 private image values·선택을 갱신한다.
+  rollback을 시작해도 원본 manifest의 producer run/attempt를 바꾸지 않는다.
+- infra는 AWS/CDK·chart·runtime 입력·생성기·설정 검증과 config publisher를 소유한다. backend image
+  publisher는 현재 C와 generated의 비이미지 바이트를 보존하고, infra config publisher는 현재 선택된
+  B·원본 manifest·네 digest를 보존한다. 모두 같은 잠금·허용목록·호환성 검증을 통과해야 한다.
+- Image Updater·candidate branch·registry polling·Updater Git write-back을 도입하지 않는다. `dev` tracking
+  tag의 존재·최신성을 배포 입력으로 쓰지 않는다. 현행 `image.repository` + bare `image.digest`를 유지하고
+  image.ref 전환과 별도 image overlay는 도입하지 않는다.
+- private 저장소의 임의 수동 편집·원본 역동기화는 금지한다. backend의 image 예외는 정해진 workflow
+  경로에서만 허용한다. 앱 workflow에 CDK·Helm·Kubernetes 쓰기 권한을 주지 않는다.
+- Argo CD 자체는 고정한 수동 Helm release로 관리한다. 인계한 dev 앱·Kafka·ClickHouse·platform·관측은
+  Argo가 적용하고 자동 sync·self-heal을 사용하며 prune·allowEmpty는 끈다. prod·frontend ECS·perf는 제외한다.
 
-### 2. 후보와 배포 선택의 분리
+### 2. 불변 묶음과 두 단계 게시
 
-- Image Updater는 `ImageUpdater` CRD로 구성한다. 네 앱 모두 기존 CI의 `dev` tag를 사용하며 Gateway에도 같은 tag 공급을 추가한다. native updater는 `digest` updateStrategy로 단일 mutable `dev` tag를 추적하고 platform은 `linux/arm64`로 제한한다. tag는 후보 발견에만 쓰고 native Helm image 갱신 대상은 digest가 포함된 전체 참조 `image.ref`다. 별도 image overlay는 만들지 않는다.
-- Updater는 private `candidate/dev` branch에 Git write-back한다. source/write branch는 `main:candidate/dev`로 구분한다. candidate는 Argo 배포 source가 아니며 중간의 혼합된 이미지 조합을 배포하지 않는다. Argo CD의 Git 자격은 읽기 전용, Updater의 쓰기 경로는 candidate로 제한한다.
-- infra 승격기는 네 digest가 한 완료 manifest에 속하는지, ARM64·이미지 내용·chart/runtime과의 호환성·기준 revision·허용 파일/필드·비밀 원문 부재를 검증한다. 실패·부분 게시·오래된 실행·출처 불일치는 승격하지 않는다.
-- `C`는 chart·생성기·추적 입력의 infra commit, `B`는 backend 완료 manifest의 바이트 해시다. 검증 결과를 보호된 private `main`에 불변 values snapshot commit `V`로 먼저 append한다. 이때 기존 Application pin은 유지하고, 별도 desired 선택 commit `P`가 `dev/desired.yaml`과 영향을 받는 모든 Application을 함께 바꿔 `C`·`V`·`B`를 선택한다. `V`가 자신의 commit SHA를 담는 순환 구조를 만들지 않는다.
-- Argo root는 protected `main`의 `dev/applications/`를 추적하고 child Application의 실제 source는 `C`와 `V`의 full SHA로 고정한다. `infra-commit.txt`를 저장한 사실만으로 source가 고정됐다고 보지 않는다. 각 실행의 실제 resolved revision과 기대 repository/digest, 그 digest가 선택하는 ARM64 manifest를 실제 Pod imageID에 대조한다. index digest와 ARM64 child manifest digest의 단순 문자열 일치를 요구하지 않는다.
-- 정상 후보는 검증 성공 후 자동 승격한다. 매 이미지 묶음마다 추가 수동 승인을 요구하지 않는다. 같은 backend SHA라도 digest가 달라지면 새 `B`로 전체 검증한다. breaking/schema/runtime/key 변경은 승격 전에 명시적으로 조정한 호환성·배포 계획을 반영한다.
+- `C`는 infra/chart/runtime commit, `B`는 완료 manifest 원본 바이트 해시, `V`는 generated와 B의 불변
+  snapshot commit, `P`는 desired와 Application source를 함께 바꾼 선택 commit이다. source와 artifact
+  출처·ARM64·네 repository/digest·현재 schema/runtime/key/TLS 호환성을 검증한다.
+- 잠금 소유 publisher는 V를 먼저 append한다. 이때 Application은 이전 V를 유지한다. 별도 P에서
+  desired와 영향을 받는 모든 Application의 C/V full SHA를 함께 바꾼다. V나 P 자신의 SHA를 자기 파일에
+  기록하지 않는다. 상태 기록 commit은 P가 아니며 main HEAD와 현재 desired P를 따로 비교한다.
+- 정상 image 후보는 검증 뒤 자동 승격하며 매번 수동 승인을 더하지 않는다. 원본 workflow 실패·부분 목록·
+  혼합 실행·과거 source·허용 범위 밖 변경은 거부한다. 같은 SHA 재실행의 다른 digest는 새 B로 검증한다.
+  Git 게시 성공은 배포·기능 성공을 뜻하지 않는다.
 
-### 3. 배포 순서와 운영
+### 3. 공통 잠금과 상태
 
-- 네 앱은 `enrollment-api(Flyway 성공) → telemetry-ingest → telemetry-gateway → dashboard-api` 순서로 갱신한다. 기존 image가 실행 중인 동안의 신구 혼합 구간도 호환되어야 한다. 완료 manifest가 Kubernetes의 원자적 네 앱 교체를 뜻하지 않는다.
-- parent app-of-apps의 sync wave와 child Application custom health로 순서를 강제한다. 선행 child의 목표 source revision 일치, `Synced`, `Healthy` 및 migration 성공을 확인하기 전 다음 단계를 열지 않는다.
-- Strimzi Operator/CRD와 Kafka·KafkaNodePool·KafkaTopic·KafkaUser 선언을 분리하고 Operator Ready 뒤 CR을 동기화한다. 기존 Strimzi Operator post-render 변환은 Operator Application의 전용 CMP에서 유지하고 같은 입력의 최종 manifest를 대조한다. Kafka CR 등 다른 Application은 native Helm rendering을 사용하며 CMP와 child health의 구현 세부는 infra ADR 0054가 소유한다. Strimzi가 생성한 Pod·Service·PVC·인증서 Secret은 operator가 소유한다.
-- 토픽 생성·설정은 KafkaTopic/Topic Operator만 담당한다. offset reset은 별도 수동 운영 workflow의 group 확인·중지·dry-run·실행·재조회 절차로 수행한다. 일반 sync로 Job을 반복 실행하지 않는다.
-- runtime·JWT/OIDC·Kafka 인증서 변경은 명시적인 입력·metadata revision과 재배포로 적용한다. 기존 AWS Secret의 CSI 공급과 Strimzi 인증서 Secret 예외를 유지하며 Secret 원문은 어떤 Git branch에도 저장하지 않는다.
-- 유지보수와 복구는 대상·사유·현재 `P/C/V/B`·복귀값을 기록하고 승격기·Updater·해당 parent/child의 auto sync/self-heal을 정해진 범위에서 중지한다. parent가 child의 중지를 즉시 복구하지 않도록 인계한다. 작업 뒤 desired와 실제 상태를 일치시키고 검증한 순서로 재개한다.
-- prune을 끈 상태의 삭제·퇴역은 별도 검토·운영 절차다. Namespace·PVC·CRD·Kafka CR·기존 Helm release를 인수 과정에서 삭제·재생성하지 않는다.
+private main의 `dev/delivery-state.json`을 양 publisher가 공유한다. schemaVersion 1의 필드와 수락 조건은
+[단일 공급 계약](../contracts/generated-values-sync.md#4-공통-delivery-state와-잠금)이 소유한다. 상태는
+`idle`, `deploying`, `rolling_back`, `blocked`이며 owner의 repository/workflow/run/attempt와 증가하는
+`generation`, `expectedDesiredP`, 작업 종류, lastKnownGood, 실패 B·canonical 이미지 벡터와 resumeFence를
+기록한다. 실제 state 파일·잠금 구현은 이번 문서 변경에 포함하지 않는다.
 
-### 4. 실패와 증거
+잠금 획득은 최신 main HEAD에 대한 CAS·정상 fast-forward이며 같은 시점에 한 owner/generation만 성공한다.
+V/P 이후에도 배포·기능 검증·rollback까지 잠금을 보유한다. 모든 mutation 전에 owner/generation·main HEAD·
+현재 P를 다시 대조하고, force push·마지막 writer 우선·timeout만으로 잠금 탈취를 금지한다. 중단된 runner와
+불명확한 실제 상태는 blocked에서 운영자가 확인한다. 소유권을 잃은 이전 실행은 차단 상태 기록을 포함해
+추가 쓰기를 하지 않는다. 수동 소유권 인계도 실제 실행 종료·Argo operation 종료 확인과 CAS가 필요하다.
 
-- 게시와 승격은 환경별로 직렬화하며 `P` 갱신 직전 현재 기준을 다시 비교한다. 다른 writer가 바꾼 상태에 덮어쓰거나 force-push하지 않는다. 충돌은 새 기준에서 전체 검증한 뒤 재시도한다.
-- 실패한 candidate는 현재 desired를 바꾸지 않는다. desired 적용 실패는 rollout 실패로 기록하고 다음 자동 승격을 중지한다. 복구는 현재 비이미지 설정을 보존하고, 현재 데이터/schema/runtime/key와 호환되는 이전 정상 네 앱 묶음 `B`로 새 `V`를 생성·검증한 뒤 새 `P`에서 선택하는 것을 기본으로 한다. 과거 `C/V/B` 전체 복원은 현재 상태와의 호환성을 별도 검증했을 때만 허용하며 임의의 YAML 일부를 섞지 않는다.
-- Git 되돌리기는 DB migration·Kafka offset·PVC·데이터 삭제의 역연산이 아니다. 되돌릴 수 없는 변경은 별도 복구 계획을 따른다. 재개 전에 실패 이미지가 다시 후보가 되지 않도록 추적 tag와 제외 상태를 대조한다.
-- 이미지 게시, candidate 검증, `V` 게시, desired 선택, Argo sync, health, 실제 기능 검증을 구분해 기록한다. Git push나 `Synced` 하나만으로 배포 성공을 선언하지 않는다.
+### 4. 적용과 복구
+
+platform·runtime·데이터 준비 뒤 enrollment Flyway 성공 → ingest → Gateway → dashboard 순서를 유지한다.
+parent wave·child health는 목표 C/V의 resolved revision·Synced·Healthy·migration 및 operation 종료를
+함께 확인한다. Git 선택이 네 Deployment의 동시 교체를 보장하지 않으며 혼합 버전 구간도 호환되어야 한다.
+Strimzi Operator의 고정 vendor/Helm/post-render CMP, CRD/CR Ready·observedGeneration, 인증서 metadata
+재배포를 유지한다. offset reset을 일반 sync hook이나 반복 Job으로 옮기지 않는다.
+
+backend image 배포의 **현재 목표 revision 실패가 확정**되고 진행 중 operation이 없으면, 같은 owner가
+실패 B·전체 이미지 벡터·source와 fence를 먼저 영속화한다. 배포 직전 lastKnownGood B가 migration이
+적용된 실제 현재 schema와 C/runtime·Kafka backlog·key/TLS에 호환되는지 재검증한다. 근거가 충분한
+경우에만 rolling_back으로 전환해 자동 rollback을 **한 번** 시도하며 이전 성공만으로 판단하지 않는다. 현재 비이미지 바이트를 보존한 새 V/P로 복구하고 Argo auto
+sync/self-heal은 유지한다. Argo 이력 rollback·Helm rollback·DB downgrade·PVC/offset 복원은 실행하지 않는다.
+
+unknown·infra config 실패·호환성 근거 없음·정상 복구 B 없음·소유권 유실·rollback 실패는 blocked이며
+자동으로 반복 복구하지 않는다. 현재 revision·기능 검증까지 성공한 rollback만 잠금을 해제한다. 실패 B와
+동일한 네 repository/digest 벡터는 manifest를 재포장해도 거부한다. 새 정상 자동 승격은 실패 source의
+strict descendant인 backend develop commit이며 **원본 게시 workflow run 생성 시각이 영속 failure fence
+이후**인 경우만 허용한다. 오래된 run의 늦은 완료·재시도나 승격 workflow 시작 시각은 이 조건을 대신하지
+못한다. 잠금 해제 때 이미 완료된 적격 후보도 다시 조회한다. infra config는 현재 B와 실패 이력·fence를
+보존하며 image 전용 descendant/run 시각 조건으로 설정 게시를 막지 않는다. config로 blocked를 우회하지 않는다.
+
+offset reset·key/인증서 교체·수동 데이터 작업은 일반 image rollback과 분리한다. 공통 잠금·자동 승격 보류를
+확보하고 필요한 parent/child의 sync·self-heal을 함께 중지한 뒤 운영한다. 대상·현재 선택·복귀값과 Git 정합·
+기능 검증을 남기고 재개한다. prune off가 데이터 삭제·보존 검토를 대체하지 않는다.
 
 ## Alternatives Considered
 
-- generated 전체를 Updater가 직접 덮어쓴다: 생성기와 입력·runtime 소유권이 충돌하므로 네 앱의 image 필드 예외로 제한한다.
-- 별도 이미지 overlay를 만든다: writer를 나눌 수 있으나 사용자가 선택한 generated 직접 갱신 방식 대신 두 번째 값 합성 규칙을 만든다.
-- Updater의 Application parameter 변경만 사용한다: Git에서 선택·복구할 수 있는 불변 묶음을 남기지 못한다.
-- ECR의 순차 `dev` tag 갱신을 완료로 취급한다: 일부 앱 게시 실패와 서로 다른 실행의 혼합을 구별하지 못한다.
-- 모든 후보에 사람 승인을 추가한다: 이번에 선택한 검증 후 자동 승격 정책과 다르다.
+- Image Updater 유지: backend가 이미 아는 digest를 다시 발견하면서 별도 묶음 검증·승격·복구가 필요해 철회한다.
+- backend가 모든 설정을 소유: chart/runtime·외부 metadata 책임까지 이동하므로 image와 config 변경 경계를 분리한다.
+- publisher마다 GitHub concurrency만 사용: 저장소 간 잠금이 아니므로 private main CAS·owner/generation을 사용한다.
+- 별도 image overlay 또는 image.ref 전환: 현행 repository+digest로 충분하고 두 번째 합성·입력 규칙을 추가하지 않는다.
+- 실패 시 무조건 이전 Git commit으로 복귀: 현재 schema/runtime/key 및 데이터 호환성을 보장하지 못한다.
+- rollback 후 다음 webhook만 대기: 이미 완료된 정상 후보를 놓치므로 잠금 해제 시 적격 후보도 다시 조회한다.
 
 ## Consequences/Tradeoffs
 
 ### Positive
 
-앱 게시와 인프라 적용 권한을 분리하면서 실제 실행 조합을 `P/C/V/B`로 추적한다. 후보 단계에서 이미지 혼합과 생성기 충돌을 잡고 기존 상태를 보존해 인수한다.
+원본 빌드 결과에서 배포 선택까지 직접 추적하고 Updater 설치·후보 branch·tag 관찰을 제거한다. backend는
+image·rollback을, infra는 설정을 소유하면서 공통 상태로 동시 변경을 차단한다. 실패 전 실행과 재포장된
+실패 이미지를 차단하고 호환 가능한 정상 묶음의 자동 복구·재개 조건을 검증할 수 있다.
 
 ### Negative
 
-완료 manifest·candidate 검증·불변 snapshot·desired 선택의 여러 단계가 필요하다. 네 앱 중 하나가 실패하면 전체 후보가 지연된다. self-heal 때문에 수동 운영은 명시적 중지·복귀가 필요하며 prune을 끈 자원의 삭제는 자동화되지 않는다. replica 1/Recreate의 기존 중단 가능성은 남는다.
+공통 CAS·소유권·상태 확인·실패 fence·현재 schema 호환성 판정은 구현 부담으로 남는다. 배포·rollback 동안
+다른 게시가 대기하며, 불명확한 장애나 config 실패는 사람이 복구해야 한다. 네 앱 중 하나가 실패하면 묶음이
+지연된다. replica 1/Recreate의 중단 가능성과 별도 데이터 복구 책임은 유지된다.
 
 ## Follow-up
 
-- 구현은 PROJ-273의 후속 구현 작업과 backend 후속 작업에서 수행한다. controller 버전/CRD, 권한, 완료 manifest·candidate 승격기, `image.ref`, CMP, child health, 관측 및 복구를 계약 수락 조건으로 검증한다.
-- 최초 활성화 전에 네 앱의 `dev` tracking tag를 검증한 현재 digest로 초기화한다. Gateway도 필수이며 누락 시 자동 승격을 켜지 않는다. 완료 B가 없는 기존 이미지의 수동 인수는 고정 C와 별도 handoff snapshot H로 직접 관리하고 V/P·root 자동화와 분리한다. 최초 자동 승격은 새 정상 B를 검증한 뒤 시작한다.
-- [PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치에 최신 main을 병합한 이력을 기반으로 이 결정을 쌓는다. 기존 사본 원칙을 계승하고 단일 [공급 계약](../contracts/generated-values-sync.md)을 갱신한다. 로컬 이력의 계승과 원격 PR 갱신·병합·실제 인수는 구분한다.
-- [PR #11](https://github.com/soma-376/docs/pull/11)의 미병합 dev EKS 수동 배포 ADR을 현행 채택 기록으로 취급하지 않는다. 현재 main의 ADR 0023은 과거 시드 결정이며 이 GitOps ADR의 전신이 아니다.
+- backend의 완료 manifest·별도 승격/rollback과 infra 설정 publisher, 공통 Git 상태·권한·보호 규칙을 구현한다.
+- Application/CMP·health·현재 revision/기능 검증·호환성 판정기를 검증한다. 구현되지 않은 gate로 자동화를 켜지 않는다.
+- 최초 수동 인수는 고정 C와 별도 H로 보존한다. 과거 이미지를 새 B로 위장하지 않으며 새 정상 B·V/P·공통 상태가
+  준비된 뒤 자동화한다. Argo 인계 전 수동 사본과 인계 후 publisher를 동시에 사용하지 않는다.
 
 ## Acceptance Criteria
 
-[공급 계약](../contracts/generated-values-sync.md)의 수락 사례가 양쪽 레포 문서와 일치해야 한다. 문서 검증은 링크·ADR 인덱스·대체 관계·소유권·실패 및 재개 조건의 정합성을 확인한다. 실제 후속 검증에서는 부분/혼합/오래된 후보 거부, 허용 필드 외 변경 거부, C/V 불일치·P 동시 변경 거부, 순서와 health 대기, 유지보수 및 실패 복구, 기존 데이터·인증서·PVC 보존을 확인한다.
+[공급 계약의 수락 사례](../contracts/generated-values-sync.md#9-수락-사례)를 양 레포에 동일하게 적용한다.
+부분·혼합·stale 후보, 비이미지 변경, cross-repo CAS 경합, 늦은 owner, state/P 구별, migration 이후 비호환,
+unknown/config 실패, 한 번의 rollback, 실패 벡터 재포장, 오래된 원본 run 재시도, strict descendant·fence 이후
+정상 후보의 재개와 잠금 해제 재조회를 검증한다. 문서 검증과 workflow/Argo 설치·실제 인수 증거는 구분한다.
 
 ## References
 
-- [PROJ-273](https://team376.atlassian.net/browse/PROJ-273), [PROJ-280](https://team376.atlassian.net/browse/PROJ-280), [PROJ-281](https://team376.atlassian.net/browse/PROJ-281), [PROJ-286](https://team376.atlassian.net/browse/PROJ-286)
-- [생성된 values와 GitOps 공급 계약](../contracts/generated-values-sync.md)
-- [infra ADR 0054 — dev Argo CD 운영](https://github.com/soma-376/infra/blob/develop/docs/adr/0054-dev-argocd-gitops-operations.md)
-- [backend ADR 0075 — 검증한 이미지 묶음 인계](https://github.com/soma-376/pulsemetry-backend/blob/develop/docs/adr/0075-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)
-- [Image Updater Git write-back](https://argocd-image-updater.readthedocs.io/en/stable/basics/update-methods/)
+- [generated values 공급 계약](../contracts/generated-values-sync.md)
+- [infra ADR 0056 — dev Argo CD 운영](https://github.com/soma-376/infra/blob/docs/PROJ-280-dev-argocd-adr/docs/adr/0056-dev-argocd-gitops-operations.md)
+- [backend ADR 0076 — 검증한 이미지 묶음 인계](https://github.com/soma-376/pulsemetry-backend/blob/docs/PROJ-286-backend-image-delivery-adr/docs/adr/0076-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)

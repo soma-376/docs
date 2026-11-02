@@ -75,11 +75,12 @@ apps/dashboard-api/          대시보드 조회
 libs/enrollment-persistence/ 원천 JPA·Flyway
 ```
 
-- **소유**: 앱 코드·검증·스키마, 네 앱의 ECR 게시와 같은 SHA·run/attempt의 완료 manifest.
-  태그 순차 변경을 배포 완료로 보지 않으며 실제 digest·ARM64 검증과 Gateway 포함을 요구한다.
-- **소유하지 않음**: AWS/CDK·Kubernetes/Helm·private desired의 변경과 배포. 이 경계는
-  [GitOps 공급 계약](../contracts/generated-values-sync.md)이 소유한다. backend CI는 이미지를 공급하고
-  infra 승격기가 C/V/B를 검증해 Argo에 인계한다.
+- **소유**: 앱 코드·검증·스키마, 네 앱의 ECR 게시와 같은 SHA/run/attempt의 ARM64 완료 manifest B.
+  원본 게시 workflow가 최종 성공으로 종료된 뒤 별도 승격 workflow가 private image values·V/P를 갱신한다.
+  현재 C·비이미지 바이트를 보존하고 image 배포의 확정 실패에 한 번의 호환 rollback·재개를 담당한다.
+- **소유하지 않음**: AWS/CDK·Kubernetes/Helm 적용과 infra chart/runtime·비이미지 설정 생성.
+  [GitOps 공급 계약](../contracts/generated-values-sync.md)의 공통 main CAS·owner/generation 잠금을
+  infra config publisher와 공유한다. 실제 적용·상태 복구는 Argo가 맡는다.
 - dev 수집 경로와 성공 의미는 [Kafka 계약](../contracts/telemetry-kafka.md), 기존 HTTP 복구 경로는
   [telemetry ingest 계약](../contracts/telemetry-ingest.md)을 따른다. 프로세스 내부 처리 모듈은 backend
   `docs/module-map.md`가 소유한다.
@@ -164,46 +165,46 @@ helm/        dev workload·platform·Kafka·관측 선언
 config/otel-collector.yaml   prod 배포용 collector 설정
 ```
 
-- **소유**: AWS 리소스·배포 역할, Kubernetes chart·runtime 입력·generated 생성기,
-  후보 검증·승격, Application/CMP·health·인수 및 복구 절차.
-- **소유하지 않음**: 앱 코드와 앱 이미지 생성. backend는 네 앱 완료 manifest를 공급하고
-  infra는 [GitOps 계약](../contracts/generated-values-sync.md)에 따라 검증한 C/V/B를 선택한다.
-- Argo CD·Image Updater 자체의 설치·갱신은 수동 Helm 관리다. 기존 release를 인계한 dev 앱·Kafka·
-  ClickHouse·platform·관측은 auto sync/self-heal·prune off로 운영한다. 같은 자원에 Helm과 Argo의
-  상시 writer를 둘 수 없다. Strimzi가 만든 Pod·Service·PVC·인증서 Secret의 소유자는 Strimzi다.
-- prod ECS와 frontend Terraform/ECS는 이 dev 결정의 대상이 아니다. 기존 task definition·
-  Terraform 소유권과 별도 앱 CD 계약을 유지한다. backend dev CI에 ECS/CDK/Helm 실행을 추가하지 않는다.
+- **소유**: AWS 리소스·배포 역할, chart·runtime 입력·generated 생성기·설정 검증과 config publisher,
+  Application/CMP·health·인수 및 유지보수 절차. 설정 재생성은 현재 B·원본 manifest·네 digest를 보존한다.
+- **소유하지 않음**: 앱 코드·이미지 생성과 backend image/rollback publisher. 두 publisher는
+  [공급 계약](../contracts/generated-values-sync.md)의 공통 Git CAS 잠금으로 V/P를 게시하고 배포·검증까지
+  잠금을 유지한다. state commit과 P는 별개이며 repo별 concurrency를 공통 잠금으로 보지 않는다.
+- Argo CD 자체는 수동 Helm 관리다. Image Updater는 도입하지 않는다. 기존 release를 인계한 dev 앱·Kafka·
+  ClickHouse·platform·관측은 auto sync/self-heal·prune off이며 같은 자원에 Helm과 Argo writer를 두지 않는다.
+  Strimzi가 만든 Pod·Service·PVC·인증서의 소유자는 Strimzi다.
+- prod ECS와 frontend Terraform/ECS, 격리 perf는 이 dev 결정의 대상이 아니다. 기존 task definition·
+  Terraform 소유권과 별도 앱 CD 계약을 유지한다. backend dev workflow에 ECS/CDK/Helm 실행을 추가하지 않는다.
 - 폴더 의존은 `prod → common`, `dev → common`, `cicd → common` 단방향이다.
   실제 account 식별자·ARN·endpoint는 공개 원본에 넣지 않는다.
-- `AGENTS.md`의 불변 규칙과 남은 작업, `docs/adr/README.md`의 현재 ADR 번호·상태를 먼저 확인한다.
+- `AGENTS.md`의 불변 규칙과 남은 작업, ADR 인덱스의 현재 번호·상태를 먼저 확인한다.
 
 ### 현재 상태
 
-Strimzi의 배포·관측 검증과 GitOps 자동화는 별도다. PROJ-280·281·286은 설계 문서이며
-Argo/Updater 설치·candidate 승격·Application/CMP·실제 인수 완료를 뜻하지 않는다.
-인수 전에는 기존 infra 수동 Helm 런북과 Strimzi 13개 YAML 사본 공급을 유지한다.
-완료 manifest·desired·Application·delivery state가 있는 저장소에는 수동 사본 복사를 실행하지 않는다.
+PROJ-280·281·286은 설계 문서다. publisher·공통 state·자동 rollback·Application/CMP·Argo 설치와 실제
+인수는 후속 구현·검증이며 기존 Strimzi·관측의 완료와 별개다. 인수 전에는 PROJ-277 수동 Helm 런북과
+Strimzi 13개 YAML 사본 공급을 유지한다. 완료 manifest·desired·Application·delivery state가 있으면 수동
+사본 복사를 중단한다.
 
 ## infra-generated-values
 
 `soma-376/infra-generated-values`는 private 저장소이며 기본 브랜치는 `main`이다.
 공급 경계의 단일 출처는 [generated values 계약](../contracts/generated-values-sync.md)이다.
 
-- **소유**: `dev/generated/` 사본·`dev/infra-commit.txt`의 C·`dev/bundle.json` 원본 manifest 사본,
-  `dev/desired.yaml`의 선택·`dev/applications/`의 infra 템플릿에서 생성된 child Application.
-- **소유하지 않음**: 입력·생성기·chart·배포 정책. infra 원본을 수정해 재생성하며 역동기화하지 않는다.
-- `candidate/dev`는 비배포 후보이며 Updater는 네 앱 image.ref만 수정한다. infra 승격기가
-  main에 snapshot V를 먼저 append하고 별도 P에서 desired와 영향을 받는 child의 C/V pin을 함께 바꾼다.
-- Argo CD는 main의 Application을 읽고 child의 C/V를 고정해 적용한다. 저장소 자격증명·Secret 원문·
-  kubeconfig·조회 원본·개인 경로는 저장하지 않는다. 실제 ARN·내부 endpoint 참조는 private 사본에만 둔다.
+- **소유**: generated 사본·C·원본 B·desired·infra 템플릿의 child Application과 공통 delivery state.
+- **소유하지 않음**: 입력·생성기·chart·배포 정책. infra 원본과 현재 선택 B를 기준으로 검증하며 역동기화하지 않는다.
+- backend는 image/rollback, infra는 config publisher이며 공통 잠금의 한 owner/generation만 변경한다.
+  V를 먼저 append하고 별도 P에서 desired와 Application의 C/V pin을 함께 바꾼다. Image Updater·candidate
+  branch·별도 image overlay는 없고 repository+digest를 유지한다.
+- delivery state의 lastKnownGood·실패 B와 이미지 벡터·resumeFence를 보존한다. 상태 commit은 P가 아니며
+  확정 실패·호환성·한 번 rollback·차단·재개의 상세 규칙은 허브 계약을 따른다.
+- Argo는 main의 Application을 읽고 child C/V를 고정한다. Git 쓰기를 하지 않는다. 자격증명·Secret 원문·
+  kubeconfig·조회 원본·개인 경로는 보관하지 않는다. 실제 ARN·endpoint는 private 사본에만 둔다.
 
 ### 현재 상태
 
-[ADR 0031](../adr/0031-dev-gitops-delivery.md)은 승인 설계이며 실제 후보 공급·승격·GitOps 인수는 후속 검증 대상이다.
-[PR #16](https://github.com/soma-376/docs/pull/16)의 PROJ-276 선행 브랜치를 기반으로 기존 사본
-소유권을 계승한다. [generated 사본 ADR 0030](../adr/0030-generated-values-private-sync-copy.md)의
-직접 수정 금지·공급 파일·수동 배포 범위는 ADR 0031의 image 예외·V/P 승격으로 부분 대체·확장한다.
-인수 전의 수동 사본 절차와 인수 후 publisher 경로를 구분한다.
+[ADR 0031](../adr/0031-dev-gitops-delivery.md)은 개정된 승인 설계다. 기존 PROJ-276 사본 범위는 인계 전이며,
+인계 후 publisher·state schema·GitOps 검증과 실제 인수는 별도 완료 근거가 필요하다.
 
 ## rdb-schema
 
