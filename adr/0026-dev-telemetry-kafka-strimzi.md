@@ -6,6 +6,8 @@ Accepted — PROJ-282의 사용자 승인 결정. 실제 배포·전환·장애 
 ADR 0001의 dev OTLP 불투명 토큰 전용 결정, ADR 0005의 단일 배포 단위·네트워크 큐 금지,
 ADR 0006의 dev 동기 적재 성공 응답·서버 배치 큐 금지 부분을 대체한다. 기존 HTTP 복구 경로와
 마스킹·신원·재시도 계약의 나머지 부분은 유지한다.
+부분 대체: [ADR 0031](0031-dev-gitops-delivery.md)은 GitOps 인수 후 인증서 metadata revision을
+반영하는 배포 실행 책임만 바꾼다. Strimzi 인증서 소유권·mTLS·명시적 앱 재배포 원칙은 유지한다.
 
 ## Context
 
@@ -30,7 +32,7 @@ ADR 0006의 dev 동기 적재 성공 응답·서버 배치 큐 금지 부분을 
 - Strimzi가 같은 `pulsemetry-dev` namespace에서 CA·사용자 Secret을 생성·관리한다.
   이 Secret만 앱에 읽기 전용 mount하며 기존 AWS Secret의 CSI 공급은 바꾸지 않는다.
 - 인증서 365일·갱신 창 30일을 사용한다. 앱은 Secret metadata revision을 배포 annotation에 반영해
-  명시적으로 재배포한다. 기존 replica 1/Recreate의 짧은 중단을 허용하며 자동 무중단 reload를 주장하지 않는다.
+  명시적으로 재배포한다. GitOps 인수 후 metadata와 재배포 선택은 [공급 계약](../contracts/generated-values-sync.md)을 따른다. 기존 replica 1/Recreate의 짧은 중단을 허용하며 자동 무중단 reload를 주장하지 않는다.
 - HTTP 경로를 보존한 내부 검증 → main Kafka 전환 → 30분 안정화 → MSK와 전용 리소스 순차 삭제를 따른다.
   사용자는 미확인 MSK 데이터 폐기를 허용했다. 데이터·offset 이관은 하지 않는다.
 - prod는 이 결정의 배포 대상이 아니며 PROJ-257에서 용량·다중 AZ·controller 분리를 따로 결정한다.

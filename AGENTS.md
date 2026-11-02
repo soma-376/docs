@@ -54,3 +54,21 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 협업 컨벤션 v2의 브랜치명·커밋 형식은 그대로 따르되, 베이스만 develop이 아니라 main이다.
 `.github/workflows/`의 PR 자동화(제목 채움·담당자 지정)도 main 대상 PR에 걸려 있다.
+
+## PROJ-281 dev GitOps 배포 계약
+
+[ADR 0031](adr/0031-dev-gitops-delivery.md)과 [공급 계약](contracts/generated-values-sync.md)은
+Image Updater 도입 철회와 workflow 기반 게시·복구 설계다. backend는 원본 게시 workflow 최종 성공 뒤
+별도 승격으로 같은 SHA/run/attempt 네 ARM64 이미지의 B를 선택하고 image·rollback을 게시한다.
+infra config publisher는 선택 B를 보존하며 설정을 재생성한다. backend는 C와 비이미지 바이트를 보존한다.
+두 publisher는 private main의 delivery-state.json·CAS·owner/generation 공통 잠금을 배포·기능 검증까지
+보유한다. 상태 commit과 P를 구별하며 repository별 concurrency·timeout 잠금 탈취·force push는 금지한다.
+현재 revision 실패가 확정되면 실제 schema/runtime/key/TLS 호환성을 확인한 이전 정상 B로 한 번만 자동
+image rollback한다. unknown·config 실패·비호환·소유권 유실·복구 실패는 blocked다. 일반 image rollback은
+Argo auto sync/self-heal을 유지하며 offset/key/인증서 유지보수는 별도 중지 절차다.
+실패 B·전체 이미지 벡터 재게시를 차단하고 실패 source의 strict descendant이면서 원본 게시 run이 영속
+failure fence 이후 생성된 정상 후보만 자동 재개한다. 잠금 해제 시 이미 완료된 적격 후보도 다시 조회한다.
+Updater·candidate branch·tracking tag 발견·image.ref 전환·별도 overlay는 없고 repository+digest를 유지한다.
+Argo 자체만 수동 Helm, 인계한 Application은 auto sync/self-heal·prune off다. 부모 PROJ-276의 수동 사본은
+인계 전 범위이며 metadata/state 존재 시 중단한다. 실제 workflow·state 파일·Argo 설치는 이번 문서에 없다.
+다음 ADR은 `0032`부터이며 실제 작성 전 인덱스를 다시 확인한다.
