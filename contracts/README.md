@@ -21,7 +21,7 @@ E2E 검증에서 확인된 차단 결함 4건 중 3건이 "구간 내부의 버�
 | [`enrollment-api.md`](enrollment-api.md) | `telemetryctl` ↔ `pulsemetry-backend` | 확정 |
 | [`telemetry-ingest.md`](telemetry-ingest.md) | `telemetryctl` → 현재 `ai-telemetry-pipeline`, 목표 `pulsemetry-backend` (배포: `infra`) | 현재 배포 경로 B3 미해결; 목표 경로 상태·재시도는 §8 |
 | [`data-model.md`](data-model.md) | `pulsemetry-backend`(DDL) ↔ 현재 `ai-telemetry-pipeline`, 목표 backend ingest 모듈(읽기); 설계도 `rdb-schema` | 확정 — 소비자 전환은 배포와 함께 |
-| [`dashboard-api.md`](dashboard-api.md) | frontend(예정) ↔ backend | **골격** |
+| [`dashboard-api.md`](dashboard-api.md) | frontend ↔ backend | 기본 골격·설치 보고 계약; 자동 시간 추이 변경 중 |
 
 ## 규칙
 
