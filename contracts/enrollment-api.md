@@ -246,3 +246,17 @@ PROJ-105에서 **dev 시드 자체가 backend로 모였다.** 이제 `apps/enrol
 | — | `POST /api/v1/invitations/{id}/revoke`에 테넌트 격리가 없다 | 정적 admin 키 보유자가 전 테넌트 revoke 가능 |
 | — | `--force` 플래그가 받기만 하고 아무 동작도 하지 않는다(엔드포인트 충돌 감지 미구현) | 사용자 기대와 불일치 |
 | — | **해소됨(PROJ-79)** — `privacy.collect_raw_api_bodies`를 `required`에 추가해 Go 구조체와 대칭이 됐다(telemetryctl `8268a3a`. backend 계약 테스트가 갱신된 스키마 원본으로 통과). **기존 저장 manifest 주의** — `required` 추가라 이 필드가 없는 기존 v1 manifest는 서버 검증에서 409 `manifest_not_configured`가 된다. 테넌트 온보딩 전 수동 INSERT 점검이 필요하다 | — |
+
+
+## 설치 보고의 공백과 손실 해석
+
+[ADR 0030](../adr/0030-installation-report-gaps-and-transmission-loss.md)에 따라 heartbeat 요청·응답 형식은 유지한다.
+`collection.lost`는 실행별 누적 손실 페이로드 수이며 초기화 시 새 `daemon.run_id`를 사용한다.
+서버는 `mode=local && forwarding=true`인 보고의 양수 증가분만 서버 확인 시각으로 기록한다.
+같은 실행의 감소·재보고는 최고 누적값을 낮추거나 재합산하지 않는다. 수신기 가동 시각은 손실 관측의 추가 조건이 아니다.
+직접 전송·전달 비활성의 0, 전달 완료 감소, 대기 증가는 관측 가능한 손실 0이나 추가 손실로 해석하지 않는다.
+
+최초 전환의 최신 누계와 보존된 과거 실행은 기준값이며 과거 손실을 새 원장에 백필하지 않는다.
+기존 writer를 중지한 전환 시각부터 추적하고 rollback 중단과 재개를 기록한다.
+활성 설치가 마지막 서버 수신 시각(미보고면 등록 시각)부터 168시간 이상 보고하지 않으면
+서버가 자동으로 별도 공백 알림을 만든다. 보고 공백이 실제 전송 손실이나 AI 미사용을 뜻하지 않는다.

@@ -3,9 +3,9 @@
 | 항목 | 내용 |
 |---|---|
 | 당사자 | [pulsemetry-frontend](https://github.com/soma-376/pulsemetry-frontend) ↔ [pulsemetry-backend](https://github.com/soma-376/pulsemetry-backend) |
-| 상태 | **부분 확정.** 사용 환산액 절은 PROJ-290의 [backend #53](https://github.com/soma-376/pulsemetry-backend/pull/53)·[frontend #31](https://github.com/soma-376/pulsemetry-frontend/pull/31)에 반영됐다. 나머지 API 명세는 골격이다 |
+| 상태 | **부분 확정.** 사용 환산액 절은 PROJ-290의 [backend #53](https://github.com/soma-376/pulsemetry-backend/pull/53)·[frontend #31](https://github.com/soma-376/pulsemetry-frontend/pull/31)에 반영됐다. 설치 보고 공백·전송 손실 절은 ADR 0030에 따라 변경 중이며 나머지 API 명세는 골격이다 |
 
-> **사용 환산액 절을 제외한 API 명세는 자리표시자다.** 여기에는 [`../architecture/overview.md`](../architecture/overview.md)에서
+> **사용 환산액·설치 보고 공백·전송 손실 절을 제외한 API 명세는 자리표시자다.** 여기에는 [`../architecture/overview.md`](../architecture/overview.md)에서
 > 이미 결정된 구조적 제약을 정리했다. 엔드포인트별 계약은
 > [`enrollment-api.md`](enrollment-api.md) 수준으로 보완한다.
 
@@ -63,3 +63,41 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
   선택한 범위의 금액을 가리지 않는다. 기간 완전성·관측 공백·미가격 규칙은 유지한다.
 - 기존 금액과 원천 사용량은 보존한다. 단가표 변경으로 과거 금액을 자동 재계산하지 않으므로 합계는 과거 사용량을 모두
   현재 단가로 다시 평가한 값이 아니다. 저장된 사용량을 명시적으로 재평가한 경우 새 snapshot에서 읽는다.
+
+
+## 설치 보고 공백·전송 손실
+
+[ADR 0030](../adr/0030-installation-report-gaps-and-transmission-loss.md)을 따른다. 당사자는 backend·frontend이며
+읽기 권한과 호환 배포는 infra가 함께 관리한다. 기존 관리자 권한과 조직 격리를 유지한다.
+
+`GET /api/v1/organizations/{organizationId}/ingest-status`는 기존 상태와 독립적으로 `transmissionLoss`를 반환한다.
+
+| 필드 | 의미 |
+|---|---|
+| `payloadCount` | 최근 168시간 확인된 양수 손실 증가분 합계. 집계 불가는 null |
+| `windowStart`, `windowEnd` | 서버 기준 반개구간 `[windowEnd − 168시간, windowEnd)` |
+| `availableFrom` | 실제 집계 가능한 시작 시각. 집계 기반이 없으면 null |
+| `availability` | `complete`, `partial`, `unavailable` |
+| `reasons` | 자료 부족·중단·카운터 감소·관측 근거 없음·조회 실패 등 집계 제한 |
+| `affectedInstallationCount` | 창 안에 양수 증가분이 기록된 설치 수 |
+
+`complete`는 보고된 증가분 집계의 근거를 의미한다. `partial`은 확인된 수량을 유지하며,
+`unavailable`은 0 대신 null을 반환한다. 단순 보고 공백은 가용성 저하 사유가 아니다.
+현재 상태용 ClickHouse 조회 실패와 손실 원장용 RDS 조회 결과는 독립이다.
+
+`GET /api/v1/organizations/{organizationId}/ingest-status/loss-installations`는 헤더의 `windowEnd`를 받아
+동일한 창을 cursor로 조회한다. 설치 ID·기기명·구성원·손실 수·마지막 증가분 확인 시각·현재 설치 상태를 반환한다.
+집계에 포함된 폐기 설치도 남긴다. 분석 화면의 날짜·팀·벤더 필터는 두 API에 적용하지 않는다.
+
+알림은 `category=collection`, `ruleId=installation_report_gap`, `eventCount=null`을 추가한다.
+전용 evidence의 `kind`는 `installation_report_gap`이며 `installationId`, nullable `deviceName`, `basisAt`,
+`thresholdReachedAt`, nullable `lastReceivedAt`, nullable `resolutionDetectedAt`, nullable `resolutionReason`을 담는다.
+`resolutionReason`은 `report_resumed` 또는 `installation_revoked`다. 알림의 `open`·`closed`와 확인 여부는 독립이다.
+범주별 미확인 수는 `collection`을 포함한다. `security` 필터에는 포함하지 않는다.
+
+헤더는 “최근 7일 보고된 전송 손실 N건”을 사용하고 상세에 다음 설명을 제공한다.
+
+> 데몬이 보고한 손실 페이로드 수입니다. 이벤트·토큰 수와 다르며, 전송 대기·정책상 비수집·단순 보고 공백은 포함하지 않습니다.
+
+단순 보고 공백은 “보고 상태 미확인”으로 표현한다. 구버전 응답에 새 필드가 없으면 “집계 정보 없음”으로 표시하며
+0으로 대체하지 않는다. 새 범주·evidence를 수용하는 프론트부터 배포하고, 손실 원장 이관·읽기 권한 검증 후 dashboard를 배포한다.
