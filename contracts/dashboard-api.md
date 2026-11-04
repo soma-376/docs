@@ -79,7 +79,7 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 | `availableFrom` | 실제 집계 가능한 시작 시각. 집계 기반이 없으면 null |
 | `availability` | `complete`, `partial`, `unavailable` |
 | `reasons` | 자료 부족·중단·카운터 감소·관측 근거 없음·조회 실패 등 집계 제한 |
-| `affectedInstallationCount` | 창 안에 양수 증가분이 기록된 설치 수 |
+| `affectedInstallationCount` | 창 안에 양수 증가분이 기록된 설치 수. 집계 불가는 null |
 
 `complete`는 보고된 증가분 집계의 근거를 의미한다. `partial`은 확인된 수량을 유지하며,
 `unavailable`은 0 대신 null을 반환한다. 단순 보고 공백은 가용성 저하 사유가 아니다.
@@ -101,3 +101,10 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 
 단순 보고 공백은 “보고 상태 미확인”으로 표현한다. 구버전 응답에 새 필드가 없으면 “집계 정보 없음”으로 표시하며
 0으로 대체하지 않는다. 새 범주·evidence를 수용하는 프론트부터 배포하고, 손실 원장 이관·읽기 권한 검증 후 dashboard를 배포한다.
+
+
+집계 사유 코드는 `tracking_not_started`, `history_incomplete`, `tracking_interrupted`, `counter_decreased`,
+`no_observation`, `query_failed`다. 상세는 필수 `windowEnd`, 선택 `limit`(기본 20, 1~100), `cursor`, `snapshotId`를 받는다.
+응답은 `{meta:{organizationId,snapshotId,asOf},windowStart,windowEnd,installations:{items,totalCount,nextCursor}}`이며
+items는 `{installationId,deviceName,memberId,account,payloadCount,lastObservedAt,status}`다.
+`deviceName`·`memberId`·`account`는 nullable, status는 `active` 또는 `revoked`다. 후속 페이지는 같은 창과 snapshotId를 유지한다.
