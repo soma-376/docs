@@ -196,3 +196,15 @@ backend를 먼저 배포하고 PROJ-315 공통 정책 통합과 실제 API 개�
 ### 현재 상태·미해결
 
 PROJ-315 실제 정책 원천은 pending adapter와 분리된 통합 검증 대상이다. [공통 fixture](examples/auto-trend.fixture.json)의 빈 evidenceRefs는 그 통합 완료를 의미하지 않으며, 사용자 자동 활성화 gate는 이 증거가 확보되기 전까지 닫혀 있다. PROJ-316 알림 기능 전체를 일괄 선행 조건으로 삼지는 않는다.
+
+## 팀 탭 선택과 세션 계약 보존
+
+[ADR 0032](../adr/0032-limit-team-tabs-and-design-subscription-usage-ratio-separately.md)에 따라 팀 화면은 day/auto 모두 비용·토큰만 선택한다. 세션 선택에만 연결된 추이·비교·벤더 비중·툴팁·범례·안내를 제거하며 공유 데이터·파서와 세션 API·집계는 유지한다. 과거 axis=session·tab=session URL은 비용을 기본으로 보여주고 날짜·비교·team 선택은 보존한다.
+
+개요 세션 카드와 배치, 팀 비용 표의 세션당 값, 상세·사용자·구성원 지표, 기존 CSV의 세션 값·상태·사유는 변경하지 않는다. chart_trend는 선택한 비용·토큰 축이다. sessionCount·sessionsPerUser·tokensPerSession·equivalentCostPerSessionUsd·cumulativeSessionCount·sessionMixAvailable·sessionMixReason과 API sort=session은 기존 의미를 유지한다.
+
+미배정 사용의 관측 여부는 정상 응답의 pricedUsageRows와 unpricedUsageRows가 모두 있을 때 합계로 판정한다. 합계가 양수면 세션 ID·금액이 null이어도 행을 보인다. 합계가 0일 때만 관측 사용 없는 미배정 행을 숨긴다. 기존 구버전 호환의 optional 카운터를 필수로 바꾸지 않으며 한쪽이라도 없으면 unknown으로 행을 보존하고 실제 사용이 있었다고 단정하지 않는다. 조회 실패를 0으로 바꾸지 않는다. 구성원은 기존 periodUsage != null을 사용한다.
+
+세션 ID 결손은 정상 비용·토큰 값의 상태를 제한하지 않는다. 원천·snapshot의 session_id·session_id_namespace, firstSessionDays·firstSessionBuckets, 마지막 사용·활동·좌석 판단과 세션 파생값을 보존한다. 이번 탭 정리에는 backend API 변경이나 migration이 없다.
+
+구독료 대비 사용 환산액 카드는 별도 후속 설계다. 이번 탭 정리로 개요 카드를 교체하거나 placeholder를 추가하지 않는다. PROJ-317만 복구할 때도 비용·토큰 탭과 PROJ-316 파서를 보존한 frontend를 자동 집계 false로 빌드한다.
