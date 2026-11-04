@@ -46,7 +46,9 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
 | 0030 | [설치 보고 공백과 보고된 전송 손실을 분리해 표시한다](0030-installation-report-gaps-and-transmission-loss.md) | Accepted — 요약·기기 상세를 10분간 동일 조회 결과로 고정 |
 
-새 ADR은 `0031`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
+| 0031 | [자동 추이는 발생 시각 버킷과 서버 누적값을 사용한다](0031-auto-trends-use-source-time-buckets-and-server-cumulative-values.md) | Accepted |
+
+새 ADR은 `0032`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 
 ADR 0007은 검토 중인 제안이다. ClickHouse snapshot 쓰기와 RDS 운영 요약의 경계는 아직 현행 계약을 대체하지 않는다.
 
