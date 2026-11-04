@@ -27,6 +27,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 
 | 번호 | 제목 | Status |
 |---|---|---|
+| 0032 | [사용량의 호출 공급자 분류를 제거한다](0032-remove-usage-provider-classification.md) | Accepted |
 | 0001 | [OTLP 인증은 불투명 토큰을 애플리케이션 계층에서 검증한다](0001-otlp-authentication-model.md) | Accepted (부분 대체 — [ADR 0005](0005-single-app-telemetry-topology.md)); dev Kafka 부분 대체: [ADR 0026](0026-dev-telemetry-kafka-strimzi.md) |
 | 0002 | [manifest 배정 단위는 tenant다](0002-manifest-assignment-unit-is-tenant.md) | Accepted |
 | 0003 | [텔레메트리 파이프라인은 별도 레포로 유지하고 collector만 backend로 이관한다](0003-telemetry-pipeline-repo-boundary.md) | Superseded by [ADR 0004](0004-telemetry-pipeline-repo-merge.md) |
