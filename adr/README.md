@@ -46,7 +46,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
 | 0030 | [설치 보고 공백과 보고된 전송 손실을 분리해 표시한다](0030-installation-report-gaps-and-transmission-loss.md) | Accepted — 요약·기기 상세를 10분간 동일 조회 결과로 고정 |
 | 0031 | [자동 추이는 발생 시각 버킷과 서버 누적값을 사용한다](0031-auto-trends-use-source-time-buckets-and-server-cumulative-values.md) | Accepted — PROJ-315 pending 인계와 기본 비활성 gate |
-| 0032 | [팀 탭은 비용과 토큰으로 제한하고 구독료 대비 사용 환산액은 별도로 설계한다](0032-limit-team-tabs-and-design-subscription-usage-ratio-separately.md) | Accepted — 탭 정리 구현, 비율 카드 후속 설계 |
+| 0032 | [팀 탭은 비용과 토큰으로 제한하고 구독료 대비 사용 환산액은 별도로 설계한다](0032-limit-team-tabs-and-design-subscription-usage-ratio-separately.md) | Accepted — 탭 정리 구현, 효력 이력·정확 분수 비율 후속 설계 |
 
 새 ADR은 `0033`부터. [`0000-adr-template.md`](0000-adr-template.md)의 구조를 따른다.
 

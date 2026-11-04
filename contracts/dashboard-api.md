@@ -207,4 +207,4 @@ PROJ-315 실제 정책 원천은 pending adapter와 분리된 통합 검증 대�
 
 세션 ID 결손은 정상 비용·토큰 값의 상태를 제한하지 않는다. 원천·snapshot의 session_id·session_id_namespace, firstSessionDays·firstSessionBuckets, 마지막 사용·활동·좌석 판단과 세션 파생값을 보존한다. 이번 탭 정리에는 backend API 변경이나 migration이 없다.
 
-구독료 대비 사용 환산액 카드는 별도 후속 설계다. 이번 탭 정리로 개요 카드를 교체하거나 placeholder를 추가하지 않는다. PROJ-317만 복구할 때도 비용·토큰 탭과 PROJ-316 파서를 보존한 frontend를 자동 집계 false로 빌드한다.
+구독료 대비 사용 환산액 카드는 [독립 후속 설계](subscription-usage-value.md)다. 계약 효력·정정 이력, 같은 제품·기간의 분자·분모, 정확 분수 일할 계산·상태·API 안·텍스트 시안을 해당 문서에서 정의한다. 이번 탭 정리로 개요 카드를 교체하거나 placeholder를 추가하지 않는다. PROJ-317만 복구할 때도 비용·토큰 탭과 PROJ-316 파서를 보존한 frontend를 자동 집계 false로 빌드한다.
