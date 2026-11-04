@@ -108,3 +108,9 @@ MVP 화면 구성은 `archive/IA.md`에 초안이 있으나 **미증류**다. fr
 응답은 `{meta:{organizationId,snapshotId,asOf},windowStart,windowEnd,installations:{items,totalCount,nextCursor}}`이며
 items는 `{installationId,deviceName,memberId,account,payloadCount,lastObservedAt,status}`다.
 `deviceName`·`memberId`·`account`는 nullable, status는 `active` 또는 `revoked`다. 후속 페이지는 같은 창과 snapshotId를 유지한다.
+
+
+헤더 조회 때 조직·`windowEnd`별 기기 집계와 요약을 자기 cache에 10분간 고정한다. 합계와 영향 설치 수는
+동일한 기기 집계에서 계산하며 상세·후속 페이지는 같은 결과를 읽는다. 원천의 늦은 커밋은 다음 헤더 갱신에 반영한다.
+헤더가 발급한 창의 결과가 없거나 만료됐으면 상세는 409 `snapshot_expired`이며 새 헤더를 조회한다.
+미래 `windowEnd`는 400이다. `meta.asOf`는 해당 `windowEnd`다. 만료 cache 정리와 원천 이력 보존은 별개다.
