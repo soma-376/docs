@@ -114,3 +114,98 @@ items는 `{installationId,deviceName,memberId,account,payloadCount,lastObservedA
 동일한 기기 집계에서 계산하며 상세·후속 페이지는 같은 결과를 읽는다. 원천의 늦은 커밋은 다음 헤더 갱신에 반영한다.
 헤더가 발급한 창의 결과가 없거나 만료됐으면 상세는 409 `snapshot_expired`이며 새 헤더를 조회한다.
 미래 `windowEnd`는 400이다. `meta.asOf`는 해당 `windowEnd`다. 만료 cache 정리와 원천 이력 보존은 별개다.
+
+## 자동 시간 추이
+
+변경 중 — backend·frontend가 [ADR 0031](../adr/0031-auto-trends-use-source-time-buckets-and-server-cumulative-values.md)에 따라 합의한 계약이다. [공통 fixture](examples/auto-trend.fixture.json)는 명시적인 이벤트와 기대 point를 담으며 실제 API 캡처가 아니다.
+
+개요 `/analytics/overview`, 팀 목록 `/analytics/teams`, 팀 상세 `/analytics/teams/{teamId}`만 `bucket=auto|day`를 받는다. 경로 앞에는 기존 `/api/v1/organizations/{organizationId}`가 붙는다. 생략 또는 day는 기존 일별 DTO·집계를 유지하고 지원하지 않는 값은 400이다. 팀 사용자 조회는 bucket 없이 전달된 snapshot의 입력을 계승한다.
+
+KST 조회 시작에 맞춰 전체 기간을 6~12개로 계획한다. 아래 자동 버킷 2판 정책을 적용하고, 응답은 현재 기준 effectiveEnd 이전 구간만 포함한다. 원본 source_time으로 집계하며 일별 값을 분배하거나 보간하지 않는다.
+
+```ts
+type Value<T> = { value: T | null; status: "complete" | "partial" | "unavailable"; reasons: string[] };
+type TrendAggregation = {
+  mode: "auto";
+  policyVersion: "calendar-buckets-v2";
+  intervalSeconds: number | null;
+  intervalMonths: 1 | null;
+  effectiveEnd: string;
+  valueMode: "interval" | "cumulative";
+  rangeStart: string;
+  rangeEnd: string;
+  asOf: string;
+};
+type AutoPoint = {
+  bucketStart: string;
+  bucketEnd: string;
+  temporalState: "elapsed" | "in_progress";
+  usageRows: number | null;
+  pricedUsageRows: number | null;
+  unpricedUsageRows: number | null;
+};
+type AutoOverviewTrend = {
+  bucket: "auto";
+  points: Array<AutoPoint & {
+    equivalentCostUsd: Value<string>;
+    knownEquivalentCostUsd: Value<string>;
+    totalTokens: Value<number>;
+  }>;
+};
+type AutoTeamTrendPoint = AutoPoint & {
+  cumulativeEquivalentCostUsd: Value<string>;
+  cumulativeKnownEquivalentCostUsd: Value<string>;
+  cumulativeTotalTokens: Value<number>;
+  cumulativeSessionCount: Value<number>;
+};
+```
+
+자동 응답의 meta.trendAggregation은 필수다. 개요는 valueMode=interval이고 기존 trend를 AutoOverviewTrend로 반환한다. 팀은 valueMode=cumulative이고 team.trend 배열을 AutoTeamTrendPoint로 반환한다. 자동 point에는 일별 date·observation을 혼합하지 않는다. 팀 pricedUsageRows·unpricedUsageRows는 누적 범위이고 usageRows는 양쪽 모두 해당 버킷의 비누적 행 수다.
+
+원래 계획 종료가 asOf 이하이면 elapsed, 현재 집계 중이면 in_progress다. 현재 구간의 bucketEnd는 effectiveEnd로 자른다. 미래 구간은 반환하지 않으며 전체 미래 기간은 빈 배열이다. 지난 빈 구간은 null/unavailable/no_data와 행 수 0을 반환하고, 이미 확인된 팀 누적값은 유지한다.
+
+명시적 0과 기록 없음은 다르다. 금액은 정확한 Decimal 문자열이며 CSV에서도 원문을 보존한다. 미환산 전체값은 null/pricing_missing이고 계산 가능한 부분합은 별도 값이다. 세션 ID 결손은 session_identity_missing으로 해당 지표만 제한하며 정상 비용·토큰의 상태에 전파하지 않는다. 세션은 `(팀,product,namespace,ID)`가 기간 안에 처음 관측된 버킷에 한 번만 더한다.
+
+자동 snapshot은 현재·비교 기간의 사용량과 관측 metadata를 같은 원본 선택에서 `source_time < asOf`로 제한한다. 합계·추이·상세·사용자·CSV가 같은 입력을 읽는다. asOf는 발생 시각 상한이며 수신 시각 기준의 과거 상태 복원이 아니다. 자동 개요 meta.snapshotId는 필수이고 day 개요에는 추가하지 않는다. 팀의 기존 snapshotId는 유지한다.
+
+query_contract로 day/auto를 구분한다. 목록·상세의 요청 모드가 snapshot과 다르거나 만료되면 409 snapshot_expired다. 모드를 캐시 키에 포함하고 페이지·상세는 같은 모드·snapshot을 유지한다. CSV 사용자 조회 중 만료되면 전체 내보내기를 새 snapshot으로 다시 시작한다. 개요·팀 snapshot을 통합하지 않는다.
+
+### 수집 annotation 인계와 활성화
+
+자동 meta.collectionPolicy는 PROJ-315 원천 정책 연결 전 아래 pending 계약을 제공한다. asOf·범위는 해당 snapshot과 같다. 이 annotation은 수집 완전성이나 실제 손실의 증거가 아니다.
+
+```ts
+type PendingCollectionPolicy = {
+  policyVersion: "proj-315-pending";
+  asOf: string;
+  status: "pending";
+  annotations: [{
+    scope: "period";
+    rangeStart: string;
+    rangeEnd: string;
+    teamId: null;
+    reasons: ["policy_integration_pending"];
+    evidenceRefs: [];
+  }];
+};
+```
+
+실제 인계는 동일 snapshot에 정책 버전·기준 시각·영향 범위·사유·근거 참조를 고정한다. 정확한 시간·팀이 확인될 때만 버킷 annotation으로 연결하고 모르면 기간 수준에 남긴다. 기존 일별 완전성을 모든 시간 버킷에 복제하지 않으며 단순 보고 공백만으로 확인된 사용값을 숨기지 않는다. PROJ-316의 최근 168시간 페이로드 손실은 버킷·팀·이벤트·토큰에 배분하지 않는다.
+
+팀의 비용·토큰 탭만 표시하며 기존 세션 API·개요·표·CSV는 유지한다. 팀 누적을 화면에서 다시 더하지 않는다. 개요 좌표는 버킷 시작, 팀은 버킷 끝이며 진행 중 값은 asOf까지다. 실제 간격·전체 KST 시간 범위를 툴팁·키보드 탐색·접근성 설명에 제공한다. CSV는 mode·간격·시간대·asOf·버킷 경계·시간 상태·지표 상태·사유를 보존하고 null은 빈 셀이다. chart_trend는 선택한 비용·토큰 축이다.
+
+backend를 먼저 배포하고 PROJ-315 공통 정책 통합과 실제 API 개요·팀·CSV 검증을 통과한 배포에서만 `NEXT_PUBLIC_AUTO_TREND_ENABLED=true`로 frontend를 빌드한다. 기본값은 false다. 개발·mock 검증은 사용자 활성화 증거가 아니다. 복구는 PROJ-316 파서·PROJ-318 탭 구성을 유지한 호환 frontend를 false로 다시 빌드·배포해 day 요청으로 전환한다.
+
+### 현재 상태·미해결
+
+PROJ-315 실제 정책 원천은 pending adapter와 분리된 통합 검증 대상이다. [공통 fixture](examples/auto-trend.fixture.json)의 빈 evidenceRefs는 그 통합 완료를 의미하지 않으며, 사용자 자동 활성화 gate는 이 증거가 확보되기 전까지 닫혀 있다. PROJ-316 알림 기능 전체를 일괄 선행 조건으로 삼지는 않는다.
+
+## 자동 시간 추이 2판 (PROJ-317 개정)
+
+[ADR 0033](../adr/0033-auto-trends-use-six-to-twelve-visible-period-buckets.md)에 따라 위 자동 시간 추이 절의 버킷·미래 표시·metadata는 다음으로 대체한다.
+
+전체 선택 기간의 계획은 최소 6개·최대 12개다. 간격은 1일=3시간, 2일=6시간, 3~6일=12시간, 7~12일=1일, 13~24일=2일, 25~36일=3일, 37~84일=7일, 85~168일=14일, 169~366일=달력 1개월이다. KST 조회 시작을 기준으로 경계를 만든다. 월 경계는 원래 시작일에 N개월을 더하고 해당 월의 마지막 날로 보정한다. 13번째 짧은 구간은 12번째에 합친다.
+
+간격은 전체 선택 기간으로 정하고 표시 종료는 effectiveEnd=max(rangeStart,min(rangeEnd,asOf))다. 시작이 effectiveEnd 이상인 버킷은 반환하지 않는다. 마지막 끝은 effectiveEnd로 자른다. 원래 계획 종료보다 asOf가 이르면 in_progress, 아니면 elapsed다. 정각에는 길이가 0인 다음 구간을 만들지 않는다. 미래 전체 기간은 빈 배열이며 이미 지난 빈 구간의 값은 no_data로 보존한다. 최소 6개는 전체 계획에만 적용되며 현재까지 응답은 0~12개다.
+
+meta.trendAggregation은 policyVersion=calendar-buckets-v2, intervalSeconds(고정 간격은 초·월은 null), intervalMonths(월은 1·고정 간격은 null), effectiveEnd를 제공한다. rangeStart/rangeEnd는 전체 선택 기간을 유지한다. 차트 축의 끝은 effectiveEnd이며 구간의 정확한 끝을 툴팁과 CSV에 표시한다. 월 구간을 30일로 환산하지 않는다. 자동 snapshot 계약은 dashboard-auto-trend-v2이며 이전 자동 계약과 혼용하지 않는다. 일별 모드와 PROJ-315 활성화 gate는 유지한다.
