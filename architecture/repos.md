@@ -15,6 +15,7 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 ├── telemetryctl/
 ├── ai-telemetry-pipeline/
 ├── infra/
+├── infra-generated-values/  ← private generated·GitOps 선택 저장소
 ├── rdb-schema/
 ├── otel-collector/              ← superseded
 ├── team-376-llm-wiki/
@@ -27,10 +28,11 @@ soma-376/                        ← git 레포가 아닌 컨테이너 폴더
 |---|---|---|---|---|
 | [`docs`](#docs) | Markdown | 제품·아키텍처·**레포 간 계약** | `main` | 크로스레포 ADR |
 | [`agent-skills`](#agent-skills) | Markdown + bash | 공용 에이전트 스킬 4종 | `main` | — |
-| [`pulsemetry-backend`](#pulsemetry-backend) | Kotlin / Spring Boot / Gradle | enrollment API, **enrollment 스키마의 진실원(Flyway)** | `develop` | 9건 |
+| [`pulsemetry-backend`](#pulsemetry-backend) | Kotlin / Spring Boot / Gradle | enrollment·ingest·Gateway·dashboard 앱, 원천 Flyway·앱 이미지 | `develop` | 레포 인덱스 |
 | [`telemetryctl`](#telemetryctl) | Go | CLI + 데스크탑 데몬, manifest 계약 스키마 | `develop` | 8건 |
 | [`ai-telemetry-pipeline`](#ai-telemetry-pipeline) | TypeScript + Python | auth-proxy, telemetry-processor | `develop` | 6건 |
-| [`infra`](#infra) | AWS CDK v2 (TS) | **모든 AWS 리소스**, collector 배포 설정 | `develop` | 23건 |
+| [`infra`](#infra) | AWS CDK v2 (TS) / Helm / Terraform | AWS·Kubernetes·생성기·배포와 복구 | `develop` | 레포 인덱스 |
+| [`infra-generated-values`](#infra-generated-values) | YAML / JSON / Markdown | private generated 사본·완료 manifest·desired 선택 | `main` | 허브 ADR 0035 |
 | [`rdb-schema`](#rdb-schema) | dbml | 설계도(다이어그램). 마이그레이션 아님 | `main` | — |
 | [`otel-collector`](#otel-collector) | yaml | **superseded — 신규 작업 금지** | `main` | — |
 | [`team-376-llm-wiki`](#team-376-llm-wiki) | Markdown (Obsidian) | 회의·멘토링·의사결정 원본 누적 | `main` | wiki/decisions |
@@ -61,38 +63,40 @@ Claude Code 플러그인 마켓플레이스이자 Codex 스킬 소스. 스킬 4�
 
 ## pulsemetry-backend
 
-Kotlin + Spring Boot, Gradle 멀티모듈. [`overview.md`](overview.md)의 **Auth Service** 자리를 맡는다.
+Kotlin + Spring Boot, Gradle 멀티모듈. dev의 enrollment-api·telemetry-ingest·telemetry-gateway·dashboard-api
+네 앱과 앱별 ARM64 이미지를 소유한다. 데이터·인증·공개 API 계약은 각 기존 계약을 유지하며
+GitOps 도입으로 변경하지 않는다.
 
 ```
-apps/enrollment-api/         enrollment API 애플리케이션
-apps/telemetry-ingest/       OTLP 수집·변환·보강·적재 조립 앱 (배포 전환 전)
-libs/enrollment-persistence/ JPA 엔티티 · 리포지토리 · Flyway 마이그레이션
+apps/enrollment-api/         인증·설치·조직 관리, enrollment/telemetry_ops Flyway 선행
+apps/telemetry-gateway/      JWT 검증·Kafka 발행
+apps/telemetry-ingest/       Kafka 소비·HTTP 복구 경로·마스킹·변환·보강·적재
+apps/dashboard-api/          대시보드 조회
+libs/enrollment-persistence/ 원천 JPA·Flyway
 ```
 
-- **소유**: `POST /v1/enroll`, `POST /v1/installations/telemetry-token`, `POST /v1/invitations`,
-  부트스트랩 스크립트·바이너리 서빙(`GET /windows|/unix|/bin/{f}`), **manifest 저장**,
-  그리고 **enrollment 스키마의 진실원(Flyway)**.
-- **아직 없지만 이 레포의 몫**: 사람 계정·로그인(이 레포가 Auth Service다), manifest 작성 API(현재 수동 INSERT).
-  구현이 없는 것이지 소유가 없는 것이 아니다.
-- **소유가 확정되지 않음**: **대시보드 API**의 소재(이 레포의 모듈인지 별도 레포인지 — [`../contracts/dashboard-api.md`](../contracts/dashboard-api.md) §2).
-- **파이프라인 병합이 채택됐다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
-  파이프라인 로직 전체가 이 레포로 오며, 도착지는 앱 하나(`:apps:telemetry-ingest`)와 단계별
-  `:libs:` 모듈들이다. **OTel Collector 바이너리는 쓰지 않고 수집·마스킹도 이 레포가 구현한다**
-  ([허브 ADR 0005](../adr/0005-single-app-telemetry-topology.md)). **ClickHouse 스키마 소유권**도 함께 이동한다.
-  auth-proxy는 폐기되고 OTLP 인증은 이 레포의 Spring Security가 맡는다(ADR-0007,
-  [허브 ADR 0001](../adr/0001-otlp-authentication-model.md)). 모듈 목록은 레포의 `docs/module-map.md`가 소유한다.
-  **코드 이관은 조립 앱까지 구현됐고, 배포 전환은 남아 있다**(PROJ-105 → PROJ-106).
-  현재 배포 트래픽은 `ai-telemetry-pipeline`의 auth-proxy·Collector·processor가 받는다.
-  목표 앱의 모듈 목록은 backend `docs/module-map.md`, 상태·재시도 계약은 허브 계약 §8을 따른다.
-- **소유하지 않음**: AWS 리소스·배포 설정(`infra`), 로컬 수신기·데몬·manifest 계약 스키마 파일(`telemetryctl`), 스키마 다이어그램(`rdb-schema`).
-- 모듈 경계·네임스페이스 규칙은 ADR-0008과 레포의 `docs/module-map.md`, 인증 계층은 ADR-0007.
-- 스키마 enum 물리 타입은 **native enum**(ADR-0009가 ADR-0004의 varchar+CHECK를 대체). 진실원은 여전히 Flyway다.
-- 계약: [`../contracts/enrollment-api.md`](../contracts/enrollment-api.md) · 서버 측 상세 명세는 레포의 `docs/enrollment-server-spec.md`.
+- **소유**: 앱 코드·검증·스키마, 네 앱의 ECR 게시와 같은 SHA/run/attempt의 ARM64 완료 manifest B.
+  원본 게시 workflow가 최종 성공으로 종료된 뒤 별도 승격 workflow가 private image values·V/P를 갱신한다.
+  현재 C·비이미지 바이트를 보존하고 image 배포의 확정 실패에 한 번의 호환 rollback·재개를 담당한다.
+- **소유하지 않음**: AWS/CDK·Kubernetes/Helm 적용과 infra chart/runtime·비이미지 설정 생성.
+  [GitOps 공급 계약](../contracts/generated-values-sync.md)의 공통 main CAS·owner/generation 잠금을
+  infra config publisher와 공유한다. 실제 적용·상태 복구는 Argo가 맡는다.
+- dev 수집 경로와 성공 의미는 [Kafka 계약](../contracts/telemetry-kafka.md), 기존 HTTP 복구 경로는
+  [telemetry ingest 계약](../contracts/telemetry-ingest.md)을 따른다. 프로세스 내부 처리 모듈은 backend
+  `docs/module-map.md`가 소유한다.
+- 원천 스키마의 진실원은 backend Flyway다. 새 버전 배포는 enrollment의 migration 성공 뒤
+  ingest → Gateway → dashboard 순서다. 앱 교체 도중 구버전·신버전 공존과 rollback 호환성을 검증한다.
+- `telemetryctl`의 로컬 수신기·데몬·manifest JSON Schema와 `infra`의 배포 설정을 이 레포로 옮기지 않는다.
+
+### 현재 상태
+
+네 앱과 Strimzi 실행 경로는 기존 코드·[Kafka 전환 검증](../contracts/telemetry-kafka.md#현재-상태와-검증)을 따른다.
+[ADR 0035](../adr/0035-dev-gitops-delivery.md)의 완료 manifest·별도 승격과 검증 경계는 PROJ-311의 구현 범위다. 자동 활성화와 실제 운영 인수는 별도다.
+미병합 [PR #11](https://github.com/soma-376/docs/pull/11)의 dashboard·JWT 상세 계약 전체를 이 작업으로 채택하지 않는다.
 
 > **루트의 `PLAN.md` · `PR.md` · `RALPH-PLAN.md` · `DOMAIN-BOUNDARY-NOTES.md` · `PLAN-ADR-0008.md` ·
 > `enrollment-api-branch-review.md` · `PR2-*.html`은 스크래치다. 스펙으로 신뢰하지 않는다.**
-> 소스 주석 다수가 존재한 적 없는 `PLAN.md §6.2 / A5 / R4 / L11`을 인용한다 — 이 인용도 스펙이 아니다.
-> 권위 있는 문서는 `docs/enrollment-server-spec.md`와 `docs/adr/`뿐이다.
+> 권위 있는 소스는 backend의 `docs/`와 ADR 및 이 허브의 채택된 계약이다.
 
 ## telemetryctl
 
@@ -140,7 +144,8 @@ sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 
 - **이 레포는 backend로 병합된다**([허브 ADR 0004](../adr/0004-telemetry-pipeline-repo-merge.md)).
   파이프라인 로직 전체가 Kotlin으로 재작성돼 `pulsemetry-backend`로 옮겨가고, auth-proxy는 폐기되며
   ClickHouse 스키마 소유권도 함께 이동한다. **이관이 끝나면 이 레포는 아카이브된다.**
-  그전까지 위의 소유 서술은 그대로 사실이며, 동작하는 파이프라인은 여기에 있다.
+  위 소유 서술은 기존 구현의 범위이며 현재 dev 실행 경로는 backend Gateway·Strimzi·ingest다.
+  prod의 기존 collector·processor 실행 계약은 dev GitOps 전환으로 바꾸지 않는다.
 - 알려진 상태: 레포 테스트 0개(CI는 auth-proxy typecheck/build만).
   이 공백을 메우는 특성화 테스트 확보가 이식 착수의 선행 조건이다(허브 ADR 0004 Follow-up).
   README·`docs/`의 코드 경로·구조 서술은 PROJ-79에서 `apps/` 배치에 맞췄다.
@@ -148,23 +153,61 @@ sql/rds/                   dev 부트스트랩용 DDL·시드 (진실원 아님 
 
 ## infra
 
-AWS CDK v2 (TypeScript) **단일 인프라 레포**. ADR-0009에 따라 인프라는 여기서만 관리한다.
+AWS CDK v2 (TypeScript)·Helm과 별도 frontend Terraform을 담는 인프라 레포다.
+AWS/CDK와 Kubernetes/Helm, Auto Mode의 노드 생성·교체 책임을 구분한다.
 
 ```
-lib/common/  환경 무관 계약 상수 + 순수 헬퍼
-lib/prod/    운영 4스택 + synthProd()
-lib/dev/     dev 4스택 + synthDev()
-lib/cicd/    DeployStack + synthCicd()   (배포 역할 4개 — ADR-0024)
-config/otel-collector.yaml   ★ ECS가 실제로 기동하는 collector 설정
+lib/common/  환경 무관 계약 상수·헬퍼
+lib/prod/    prod 스택
+lib/dev/     dev Network·Data·Edge·EKS
+lib/cicd/    OIDC 배포 역할
+helm/        dev workload·platform·Kafka·관측 선언
+config/otel-collector.yaml   prod 배포용 collector 설정
 ```
 
-- **소유**: 모든 AWS 리소스, **배포용 collector 설정**, 배포 역할.
-- **소유하지 않음**: 앱 코드. 앱 레포 CI는 이미지 빌드 → ECR push → `ecs update-service --force-new-deployment`까지만 한다.
-  **태스크 정의를 바꾸려면 반드시 이 레포를 경유한다.**
-- 폴더 의존 방향은 `prod → common`, `dev → common`, `cicd → common` **단방향**. `prod ↔ dev` 상호 참조 금지.
-- region은 `ap-northeast-2`. account는 `CDK_DEFAULT_ACCOUNT`에서만 주입하고 코드·문서에 기록하지 않는다.
-- **`AGENTS.md`가 이 레포의 실질 핸드오프 문서다.** 3장(불변 규칙)과 5장(남은 작업)을 먼저 읽는다.
-- ADR 번호 `0020`은 로그 그룹 정책용으로 **예약**돼 있다. 새 ADR은 `0025`부터.
+- **소유**: AWS 리소스·배포 역할, chart·runtime 입력·generated 생성기·설정 검증과 config publisher,
+  Application/CMP·health·인수 및 유지보수 절차. 설정 재생성은 현재 B·원본 manifest·네 digest를 보존한다.
+- **소유하지 않음**: 앱 코드·이미지 생성과 backend image/rollback publisher. 두 publisher는
+  [공급 계약](../contracts/generated-values-sync.md)의 공통 Git CAS 잠금으로 V/P를 게시하고 배포·검증까지
+  잠금을 유지한다. state commit과 P는 별개이며 repo별 concurrency를 공통 잠금으로 보지 않는다.
+- Argo CD 자체는 수동 Helm 관리다. Image Updater는 도입하지 않는다. 기존 release를 인계한 dev 앱·Kafka·
+  ClickHouse·platform·관측은 auto sync/self-heal·prune off이며 같은 자원에 Helm과 Argo writer를 두지 않는다.
+  Strimzi가 만든 Pod·Service·PVC·인증서의 소유자는 Strimzi다.
+- prod ECS와 frontend Terraform/ECS, 격리 perf는 이 dev 결정의 대상이 아니다. 기존 task definition·
+  Terraform 소유권과 별도 앱 CD 계약을 유지한다. backend dev workflow에 ECS/CDK/Helm 실행을 추가하지 않는다.
+- 폴더 의존은 `prod → common`, `dev → common`, `cicd → common` 단방향이다.
+  실제 account 식별자·ARN·endpoint는 공개 원본에 넣지 않는다.
+- `AGENTS.md`의 불변 규칙과 남은 작업, ADR 인덱스의 현재 번호·상태를 먼저 확인한다.
+
+### 현재 상태
+
+PROJ-280·281·286의 설계 위에 PROJ-287·310은 Application/CMP·수동 인계 구성을 준비하고 PROJ-311은
+이미지 승격·공통 state·기능 검증을 구현한다. 별도 infra 설정 publisher와 실제 자동화 인수는 후속 수락이며
+Argo 설치·Strimzi·관측의 각 완료 근거와 구분한다. 인수 전 PROJ-279는 성공한 CDK 배포 뒤
+최초 사본부터 Strimzi 13개 YAML과 C를 CD로 공급하고 PROJ-277의 수동 Helm 적용은 유지한다.
+로그 기반 고정 이미지 입력은 B가 아니며 승인·배포 receipt로 사본 재시도를 검증한다. 완료 manifest·
+desired·Application·delivery state가 있으면 사본 writer를 중단하고 실제 실행 이미지의 H로 별도 인수한다.
+
+## infra-generated-values
+
+`soma-376/infra-generated-values`는 private 저장소이며 기본 브랜치는 `main`이다.
+공급 경계의 단일 출처는 [generated values 계약](../contracts/generated-values-sync.md)이다.
+
+- **소유**: generated 사본·C·원본 B·desired·infra 템플릿의 child Application과 공통 delivery state.
+- **소유하지 않음**: 입력·생성기·chart·배포 정책. infra 원본과 현재 선택 B를 기준으로 검증하며 역동기화하지 않는다.
+- backend는 image/rollback, infra는 config publisher이며 공통 잠금의 한 owner/generation만 변경한다.
+  V를 먼저 append하고 별도 P에서 desired와 Application의 C/V pin을 함께 바꾼다. Image Updater·candidate
+  branch·별도 image overlay는 없고 repository+digest를 유지한다.
+- delivery state의 lastKnownGood·실패 B와 이미지 벡터·resumeFence를 보존한다. 상태 commit은 P가 아니며
+  확정 실패·호환성·한 번 rollback·차단·재개의 상세 규칙은 허브 계약을 따른다.
+- Argo는 main의 Application을 읽고 child C/V를 고정한다. Git 쓰기를 하지 않는다. 자격증명·Secret 원문·
+  kubeconfig·조회 원본·개인 경로는 보관하지 않는다. 실제 ARN·endpoint는 private 사본에만 둔다.
+
+### 현재 상태
+
+[ADR 0035](../adr/0035-dev-gitops-delivery.md)은 개정된 승인 설계다. 인계 전 PROJ-279 사본은 최초 공급부터
+infra CD가 14개 허용 파일을 한 commit으로 게시하며 실제 dev 값의 로컬 수동 게시로 우회하지 않는다.
+인계 후 publisher·state schema·GitOps 검증과 실제 인수는 별도 완료 근거가 필요하다.
 
 ## rdb-schema
 

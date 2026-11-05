@@ -121,6 +121,15 @@ flowchart LR
 - **인증 종결 지점은 애플리케이션 계층이다.** 경계(ALB)는 TLS 종단과 라우팅만 하고, 별도 auth 서버(외부 IdP)를 두지 않는다
   ([허브 ADR-0001](../adr/0001-otlp-authentication-model.md)이 infra ADR-0008의 ALB 인증안을 대체했다).
 
+### dev 배포 제어 경계
+
+[ADR 0035](../adr/0035-dev-gitops-delivery.md)은 Image Updater 없이 backend image/rollback과 infra config
+publisher가 공통 Git 잠금으로 private snapshot/desired를 선택하고 Argo가 적용하는 책임을 정한다.
+backend는 같은 SHA/run/attempt의 네 ARM64 image B와 현재 C·비이미지 값을 보존하는 image 변경을,
+infra는 현재 B를 유지하는 설정 재생성을 맡는다. C/V/B/P와 공통 state·확정 실패의 한 번 rollback·
+failure fence 이후 정상 후보 재개는 [공급 계약](../contracts/generated-values-sync.md)이 소유한다.
+배포 제어는 제품 데이터 흐름·마스킹·귀속·성공 응답의 의미를 바꾸지 않는다.
+
 ### 가공은 두 단계, 비용은 이원화
 
 | 단계 | 하는 일 | 시점 · 주체 |
@@ -301,6 +310,10 @@ Web Browser → API Gateway → Dashboard API → 시나리오 카탈로그 (정
 ---
 
 ## 5. 목표 구조 대비 현재 구현 (요약)
+
+GitOps 설계는 승인됐으며 컨트롤러·workflow·chart 변경과 실제 인수는 별도다. 인수 전에는 기존
+Helm 수동 절차를 유지한다. dev Strimzi 실배포 검증은 [Kafka 계약](../contracts/telemetry-kafka.md)의
+현재 상태를 따르며 아래 과거 조사와 구분한다.
 
 이 문서는 목표 구조다. 2026-08 기준 구현은 다음 지점에서 다르다. 레포별 상세는 [`repos.md`](repos.md).
 
