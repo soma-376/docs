@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted — 버킷·미래 표시·metadata는 [ADR 0033](0033-auto-trends-use-six-to-twelve-visible-period-buckets.md)이 부분 대체한다. 나머지 결정은 유지한다.
 
 ## Context
 
