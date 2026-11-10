@@ -45,7 +45,7 @@ supersede 할 때는 기존 ADR의 `Status`도 함께 고친다. 인덱스가 �
 | 0028 | [서버는 단일 참조 단가표를 사용하고 저장된 환산액을 합산한다](0028-single-reference-price-catalog.md) | Accepted |
 | 0029 | [성능 시험은 격리된 Strimzi 환경에서 진입 경로와 저장 정합성을 분리해 검증한다](0029-perf-strimzi-readiness-and-path-comparison.md) | Accepted — 구현·배포·실행 증거는 별도 판정 |
 | 0034 | [생성된 Helm values만 private 레포에 동기화한다](0034-generated-values-private-sync-copy.md) | Proposed — 인계 전 CD 사본·수동 Helm 범위; 인계 후 공급·배포는 [ADR 0035](0035-dev-gitops-delivery.md)으로 부분 대체·확장 |
-| 0035 | [dev Kubernetes는 workflow가 선택한 이미지 묶음과 고정 values를 GitOps로 배포한다](0035-dev-gitops-delivery.md) | Accepted — PROJ-311의 불변 manifest·게시 operation 재시도 없는 PostSync 검증·공통 CAS·보수적 복구 경계; 운영 인수 별도 |
+| 0035 | [dev Kubernetes는 workflow가 선택한 이미지 묶음과 고정 values를 GitOps로 배포한다](0035-dev-gitops-delivery.md) | Accepted — PROJ-311의 불변 manifest·현재 Argo 상태 판정·공통 CAS·한 번 이미지 복구; PostSync와 실환경 호환성 검사 제거 위험 수용; 운영 인수 별도 |
 
 선행 브랜치의 `0030`~`0033`은 예약 상태로 유지한다. PROJ-243·316의 `0030`, PROJ-318·320의 `0032` 충돌은 각 선행 문서의 병합 시 정리한다. 이 작업은 해당 결정을 덮어쓰지 않고 private 사본 ADR을 `0034`, GitOps ADR을 `0035`로 배정한다.
 
