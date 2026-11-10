@@ -176,4 +176,4 @@ unknown/config 실패, 한 번의 rollback, 실패 벡터 재포장, 오래된 �
 
 - [generated values 공급 계약](../contracts/generated-values-sync.md)
 - [infra ADR 0056 — dev Argo CD 운영](https://github.com/soma-376/infra/blob/feature/PROJ-311-gitops-delivery-support/docs/adr/0056-dev-argocd-gitops-operations.md)
-- [backend ADR 0079 — 검증한 이미지 묶음 인계](https://github.com/soma-376/pulsemetry-backend/blob/feature/PROJ-311-backend-image-promotion/docs/adr/0079-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)
+- [backend ADR 0081 — 검증한 이미지 묶음 인계](https://github.com/soma-376/pulsemetry-backend/blob/feature/PROJ-311-backend-image-promotion/docs/adr/0081-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)

@@ -333,7 +333,7 @@ PROJ-280·281·286의 설계를 PROJ-311에서 완료 manifest·별도 image 승
 현재 구현 상태와 실제 운영 증거는 각 소유 레포에서 확인한다.
 
 구현·운영은 [infra ADR 0056](https://github.com/soma-376/infra/blob/feature/PROJ-311-gitops-delivery-support/docs/adr/0056-dev-argocd-gitops-operations.md),
-backend 공급·승격·rollback은 [backend ADR 0079](https://github.com/soma-376/pulsemetry-backend/blob/feature/PROJ-311-backend-image-promotion/docs/adr/0079-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)을 따른다.
+backend 공급·승격·rollback은 [backend ADR 0081](https://github.com/soma-376/pulsemetry-backend/blob/feature/PROJ-311-backend-image-promotion/docs/adr/0081-dev-앱-이미지는-검증한-묶음으로-GitOps에-인계한다.md)을 따른다.
 상대 레포 문서·구현이 모두 반영될 때까지 이 계약은 변경 중이다.
 
 ## 9. 수락 사례
