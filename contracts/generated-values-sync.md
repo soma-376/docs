@@ -89,7 +89,7 @@ repository는 `soma-376/pulsemetry-backend`, workflow는 허용한 `deploy_dev.y
 4. push는 예상한 기존 main HEAD를 검사한다. 충돌하면 최신 main의 선택을 다시 읽고 반대 영역을 보존한 후보를 재생성한다. 최초 시도를 포함해 최대 3회다.
 5. push 응답이 유실되면 원격 이력에 정확한 P가 포함됐는지 확인한다. 확인되면 게시 성공, 확인 불가면 실패다. force push·자동 rebase는 하지 않는다.
 
-내용과 선택이 같으면 commit을 만들지 않는 no-op이다. 결과는 `published`, `noop`, `superseded`, 실패로 구분하며 공개 로그에는 원문 values·API 응답·자격증명을 남기지 않는다.
+내용과 선택이 같으면 commit을 만들지 않는 no-op이다. 성공 결과는 `published` 또는 `noop`이며, 더 최신의 성공 후보가 확인되면 게시를 중단하고 workflow를 실패시킨다. 공개 로그에는 원문 values·API 응답·자격증명을 남기지 않는다.
 
 Git 게시까지만 직렬화하므로 이전 rollout이 끝나기 전에 새 선택을 게시할 수 있다. Argo CD는 중간 버전을 건너뛰고 최신 선언으로 수렴할 수 있다. `published`는 Argo Synced/Healthy나 실제 기능 성공을 뜻하지 않는다. 게시 실패는 workflow 실패이며 자동 rollback이나 전역 blocked 상태를 만들지 않는다.
 
